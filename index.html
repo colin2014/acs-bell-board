@@ -141,8 +141,23 @@
       link. The deck must be viewable by anyone with the link (or by everyone at your school domain).
     </p>
 
-    <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
-    <input id="delay" type="number" min="0" step="1" value="0">
+    <div class="row">
+      <div>
+        <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
+        <input id="delay" type="number" min="0" step="1" value="0">
+      </div>
+      <div>
+        <label for="refresh">Reload deck every (minutes, 0 = off)</label>
+        <input id="refresh" type="number" min="0" step="1" value="10">
+      </div>
+    </div>
+    <p class="hint" style="margin-top:6px">
+      Google caches the embedded deck, so edits you make in Slides do not appear by
+      themselves. Reloading picks up the current version &mdash; but it jumps back to
+      slide 1, so a longer gap is calmer for a display in a lesson.
+      <b>Refresh now</b> forces it immediately.
+    </p>
+    <button id="reloadBtn" style="margin-top:6px">&#8635; Refresh now</button>
 
     <hr>
 
@@ -228,7 +243,7 @@
 
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
-              place:"Egham", showWx:true, showQuote:true };
+              place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00" };
 
   function load(){
     try{
@@ -247,6 +262,7 @@
     if(q.get("place"))  cfg.place = q.get("place");
     if(q.get("wx"))     cfg.showWx = q.get("wx") !== "0";
     if(q.get("quote"))  cfg.showQuote = q.get("quote") !== "0";
+    if(q.get("refresh")) cfg.refresh = parseInt(q.get("refresh"), 10) || 0;
   }
 
   function save(){
@@ -273,7 +289,30 @@
   function applySlides(){
     var e = embedUrl(cfg.url);
     placeholder.style.display = e ? "none" : "flex";
-    if(slidesEl.getAttribute("src") !== e) slidesEl.setAttribute("src", e);
+    if(e && stripCb(slidesEl.getAttribute("src")) !== e) slidesEl.setAttribute("src", e);
+    if(!e) slidesEl.setAttribute("src", "");
+  }
+
+  function stripCb(src){ return (src || "").replace(/[?&]cb=\d+/, ""); }
+
+  /* Google's embed player caches the deck, so edits made in Slides do not appear
+     on their own. Reloading the iframe with a fresh cache-buster pulls the
+     current version. It restarts at slide 1, so keep the interval sensible. */
+  var lastReload = Date.now();
+
+  function reloadSlides(){
+    var e = embedUrl(cfg.url);
+    if(!e) return;
+    slidesEl.setAttribute("src", e + (e.indexOf("?") === -1 ? "?" : "&") + "cb=" + Date.now());
+    lastReload = Date.now();
+  }
+
+  function maybeReloadSlides(){
+    if(!cfg.refresh) return;                       // 0 = never
+    if(Date.now() - lastReload < cfg.refresh * 60000) return;
+    // don't yank the deck out from under a bell that is mid-ring
+    if(document.body.classList.contains("ringing")) return;
+    reloadSlides();
   }
 
   /* ---------- sound ---------- */
@@ -527,6 +566,7 @@
   function openSettings(){
     document.getElementById("url").value = cfg.url;
     document.getElementById("delay").value = cfg.delay;
+    document.getElementById("refresh").value = cfg.refresh;
     document.getElementById("tune").value = cfg.tune;
     document.getElementById("reps").value = cfg.reps;
     document.getElementById("file").value = cfg.file;
@@ -541,6 +581,7 @@
   function readForm(){
     cfg.url   = document.getElementById("url").value.trim();
     cfg.delay = Math.max(0, parseInt(document.getElementById("delay").value, 10) || 0);
+    cfg.refresh = Math.max(0, parseInt(document.getElementById("refresh").value, 10) || 0);
     cfg.tune  = document.getElementById("tune").value;
     cfg.reps  = Math.min(5, Math.max(1, parseInt(document.getElementById("reps").value, 10) || 1));
     cfg.file  = document.getElementById("file").value.trim();
@@ -716,6 +757,19 @@
   document.addEventListener("fullscreenchange", syncFsIcon);
   document.addEventListener("webkitfullscreenchange", syncFsIcon);
 
+  /* Reload the whole page once overnight, so a display left running for weeks
+     picks up new versions of the board itself (and clears any leaked memory). */
+  function dailyReload(){
+    var d = new Date();
+    var hhmm = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    if(hhmm === cfg.reloadAt && Date.now() - startedAt > 3600000) location.reload();
+  }
+  var startedAt = Date.now();
+
+  document.getElementById("reloadBtn").onclick = function(){
+    readForm(); save(); applySlides(); reloadSlides();
+  };
+
   setBtn.onclick = openSettings;
   document.getElementById("closeBtn").onclick = function(){ dlg.classList.remove("open"); };
   document.getElementById("addTime").onclick = function(){ addRow("09:00"); };
@@ -725,7 +779,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applySlides(); tick(); refreshWeather(); showQuote();
+    save(); applySlides(); tick(); refreshWeather(); showQuote(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -749,6 +803,9 @@
 
   refreshWeather();
   setInterval(refreshWeather, 15 * 60 * 1000);   // every 15 minutes
+
+  setInterval(maybeReloadSlides, 30 * 1000);     // checks; reloads on your interval
+  setInterval(dailyReload, 60 * 1000);           // fresh copy of the board overnight
 
   showQuote();
   setInterval(showQuote, 60 * 1000);   // picks up the change at midnight
