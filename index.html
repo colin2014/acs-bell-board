@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ACS Egham — Slides &amp; Bell</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --fg:#e6edf3; --muted:#8b949e;
+    --accent:#2f81f7; --ring:#f0883e;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #stage{flex:1 1 auto; position:relative; min-height:0; background:#000}
+  #stage iframe{width:100%;height:100%;border:0;display:block}
+  #placeholder{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:12px; color:var(--muted); text-align:center; padding:24px;
+  }
+  #bar{
+    flex:0 0 auto; display:flex; align-items:center; gap:16px;
+    padding:8px 16px; background:var(--panel); border-top:1px solid #30363d;
+  }
+  #clock{font-size:clamp(26px,5.5vh,52px); font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px}
+  #date{color:var(--muted); font-size:13px}
+  #now{margin-left:auto; text-align:right; line-height:1.25}
+  #nowName{font-size:clamp(20px,3.4vh,32px); font-weight:700}
+  #nowSub{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  #next{text-align:right; font-size:13px; color:var(--muted); border-left:1px solid #30363d; padding-left:16px}
+  #next b{display:block; font-size:19px; color:var(--fg); font-variant-numeric:tabular-nums}
+
+  button{
+    background:#21262d; color:var(--fg); border:1px solid #30363d; border-radius:6px;
+    padding:8px 14px; font-size:14px; cursor:pointer;
+  }
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+
+  /* gear icon button — the only chrome on the bar */
+  #setBtn{
+    width:44px; height:44px; padding:0; border-radius:50%; font-size:20px; line-height:1;
+    display:flex; align-items:center; justify-content:center; opacity:.55; transition:opacity .2s, transform .3s;
+  }
+  #setBtn:hover{opacity:1; transform:rotate(45deg)}
+  #setBtn.warn{opacity:1; border-color:var(--ring); background:#7d2d0f}
+  #fsBtn{
+    width:44px; height:44px; padding:0; border-radius:50%; font-size:19px; line-height:1;
+    display:flex; align-items:center; justify-content:center; opacity:.55; transition:opacity .2s;
+  }
+  #fsBtn:hover{opacity:1}
+
+  body.ringing{animation:flash 1s steps(1,end) infinite}
+  @keyframes flash{0%{background:var(--bg)}50%{background:#5a2d00}}
+
+  #settings{
+    position:fixed; inset:0; background:rgba(0,0,0,.65); display:none;
+    align-items:center; justify-content:center; padding:16px; z-index:10;
+  }
+  #settings.open{display:flex}
+  .card{
+    background:var(--panel); border:1px solid #30363d; border-radius:10px;
+    width:min(580px,100%); max-height:92vh; overflow:auto; padding:20px;
+  }
+  .card h2{margin:0 0 4px; font-size:20px}
+  .hint{margin:0 0 16px; color:var(--muted); font-size:13px}
+  label{display:block; margin:14px 0 4px; font-size:13px; color:var(--muted)}
+  input[type=text],input[type=number],select{
+    width:100%; padding:8px 10px; background:#0d1117; color:var(--fg);
+    border:1px solid #30363d; border-radius:6px; font-size:15px;
+  }
+  #timeList{display:flex; flex-wrap:wrap; gap:8px}
+  .timeRow{display:flex; align-items:center; gap:4px; background:#0d1117;
+           border:1px solid #30363d; border-radius:6px; padding:4px 6px}
+  .timeRow input{border:0; background:transparent; color:var(--fg); font-size:15px; padding:2px}
+  .timeRow button{padding:2px 7px; line-height:1; border:0; background:transparent; color:var(--muted)}
+  .row{display:flex; gap:10px; align-items:flex-start}
+  .row > div{flex:1}
+  .actions{display:flex; gap:10px; margin-top:22px; flex-wrap:wrap}
+  .actions .spacer{flex:1}
+  #armBtn.ready{background:#1a4d2e; border-color:#2ea043}
+  hr{border:0; border-top:1px solid #30363d; margin:20px 0}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <iframe id="slides" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  <div id="placeholder">
+    <div style="font-size:22px">No slideshow set</div>
+    <div>Open the &#9881; settings and paste a Google Slides link.</div>
+  </div>
+</div>
+
+<div id="bar">
+  <div>
+    <div id="clock">--:--:--</div>
+    <div id="date"></div>
+  </div>
+  <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
+  <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
+  <div id="now">
+    <div id="nowName">&mdash;</div>
+    <div id="nowSub"></div>
+  </div>
+  <div id="next">Next bell<b>&mdash;</b></div>
+</div>
+
+<div id="settings">
+  <div class="card">
+    <h2>Settings</h2>
+    <p class="hint">Saved in this browser. Changes apply immediately.</p>
+
+    <label for="url">Google Slides link</label>
+    <input id="url" type="text" placeholder="https://docs.google.com/presentation/d/..../edit">
+    <p class="hint" style="margin-top:6px">
+      Paste the normal edit link, a share link, or a <b>File &rarr; Share &rarr; Publish to the web</b>
+      link. The deck must be viewable by anyone with the link (or by everyone at your school domain).
+    </p>
+
+    <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
+    <input id="delay" type="number" min="0" step="1" value="0">
+
+    <hr>
+
+    <div class="row">
+      <div>
+        <label for="tune">Bell sound</label>
+        <select id="tune">
+          <option value="westminster">Westminster chime (long)</option>
+          <option value="chime">Short 3-note chime</option>
+          <option value="strike">Bell strikes</option>
+          <option value="dingdong">Ding-dong (two-tone)</option>
+          <option value="glock">Glockenspiel rise (bright)</option>
+          <option value="electric">Old school electric bell</option>
+          <option value="file">Custom sound file (URL below)</option>
+        </select>
+      </div>
+      <div>
+        <label for="reps">Repeat</label>
+        <input id="reps" type="number" min="1" max="5" step="1" value="1">
+      </div>
+    </div>
+
+    <label for="file">Custom sound file URL (.mp3 / .wav / .ogg)</label>
+    <input id="file" type="text" placeholder="https://.../chime.mp3">
+    <p class="hint" style="margin-top:6px">
+      Optional. Must be a direct link that allows hot-linking &mdash; a Google&nbsp;Drive share
+      link will <i>not</i> play. If it fails to load, the built-in chime plays instead.
+    </p>
+
+    <div class="row" style="margin-top:14px">
+      <div><button id="armBtn" style="width:100%">&#128276; Enable sound</button></div>
+      <div><button id="testBtn" style="width:100%">&#9654; Test bell</button></div>
+    </div>
+    <p class="hint" style="margin-top:8px">
+      Browsers block audio until someone clicks. Press <b>Enable sound</b> once after the
+      display starts up each day.
+    </p>
+
+    <hr>
+
+    <label>Bell times</label>
+    <div id="timeList"></div>
+    <button id="addTime" style="margin-top:10px">+ Add time</button>
+
+    <div class="actions">
+      <button id="resetBtn">Reset times</button>
+      <div class="spacer"></div>
+      <button id="closeBtn">Cancel</button>
+      <button id="saveBtn" class="primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
+  var KEY = "acsBell.v2";
+
+  var cfg = { url:"", times:DEFAULT_TIMES.slice(), delay:0,
+              tune:"westminster", reps:1, file:"" };
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){ var o = JSON.parse(raw); for(var k in cfg){ if(k in o) cfg[k] = o[k]; } }
+    }catch(e){ /* storage can be blocked inside embeds; defaults still work */ }
+
+    // URL params win, so a Google Site can hard-code the deck:
+    //   ?slides=<url>&times=08:30,08:55&delay=20&tune=chime&file=<mp3>
+    var q = new URLSearchParams(location.search);
+    if(q.get("slides")) cfg.url = q.get("slides");
+    if(q.get("times"))  cfg.times = q.get("times").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+    if(q.get("delay"))  cfg.delay = parseInt(q.get("delay"), 10) || 0;
+    if(q.get("tune"))   cfg.tune = q.get("tune");
+    if(q.get("file"))   cfg.file = q.get("file");
+  }
+
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){}
+  }
+
+  // Turn any Google Slides URL into an embeddable one.
+  function embedUrl(u){
+    if(!u) return "";
+    u = u.trim();
+    var m = u.match(/\/presentation\/d\/(?:e\/)?([A-Za-z0-9_-]+)/);
+    if(!m) return u;                       // not a Slides link: embed as given
+    var published = /\/presentation\/d\/e\//.test(u);
+    var base = "https://docs.google.com/presentation/d/" + (published ? "e/" : "") + m[1] + "/embed";
+    var p = ["rm=minimal"];
+    if(cfg.delay > 0){ p.push("start=true", "loop=true", "delayms=" + (cfg.delay * 1000)); }
+    else { p.push("start=false", "loop=false"); }
+    return base + "?" + p.join("&");
+  }
+
+  var slidesEl = document.getElementById("slides");
+  var placeholder = document.getElementById("placeholder");
+
+  function applySlides(){
+    var e = embedUrl(cfg.url);
+    placeholder.style.display = e ? "none" : "flex";
+    if(slidesEl.getAttribute("src") !== e) slidesEl.setAttribute("src", e);
+  }
+
+  /* ---------- sound ---------- */
+  var ctx = null;
+  var armBtn = document.getElementById("armBtn");
+  var setBtn = document.getElementById("setBtn");
+  var audioEl = new Audio();
+  audioEl.preload = "auto";
+
+  function armed(){ return !!ctx && ctx.state === "running"; }
+
+  function arm(){
+    try{
+      if(!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if(ctx.state === "suspended") ctx.resume();
+      armBtn.textContent = "🔔 Sound ready";
+      armBtn.classList.add("ready");
+      setBtn.classList.remove("warn");
+      if(cfg.tune === "file" && cfg.file){ audioEl.src = cfg.file; audioEl.load(); }
+    }catch(e){
+      armBtn.textContent = "Audio unavailable";
+    }
+  }
+
+  // One bell-like note: inharmonic partials over a fundamental, fast attack, long decay.
+  function note(freq, t0, len, vol){
+    var partials = [
+      {r:1.00, g:1.00, d:1.00},
+      {r:2.00, g:0.45, d:0.70},
+      {r:2.76, g:0.28, d:0.55},
+      {r:5.40, g:0.12, d:0.35},
+      {r:0.50, g:0.30, d:1.10}
+    ];
+    partials.forEach(function(p){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq * p.r;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol * p.g, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0005, t0 + len * p.d);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0); o.stop(t0 + len * p.d + 0.05);
+    });
+  }
+
+  // Note names -> Hz (equal temperament, A4 = 440)
+  var N = {G4:392.00, B4:493.88, C5:523.25, D5:587.33, E5:659.25, F5:698.46,
+           G5:783.99, A5:880.00, C6:1046.50, E6:1318.51, G6:1567.98};
+
+  // Bright, short-decay tone — glockenspiel/celesta rather than a heavy bell.
+  function ping(freq, t0, len, vol){
+    [{r:1, g:1}, {r:2.01, g:0.35}, {r:3.98, g:0.12}].forEach(function(p){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq * p.r;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol * p.g, t0 + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0005, t0 + len);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0); o.stop(t0 + len + 0.05);
+    });
+  }
+
+  // Clanging electric bell: a buzzy square pair chopped by a fast tremolo.
+  function buzz(t0, len){
+    var g = ctx.createGain();
+    g.gain.value = 0.0001;
+    g.connect(ctx.destination);
+    [1046.5, 1244.5].forEach(function(f){
+      var o = ctx.createOscillator();
+      o.type = "square";
+      o.frequency.value = f;
+      o.connect(g);
+      o.start(t0); o.stop(t0 + len);
+    });
+    // hammer chatter, ~22 hits a second
+    var step = 1 / 22;
+    for(var t = 0; t < len; t += step){
+      g.gain.setValueAtTime(0.10, t0 + t);
+      g.gain.exponentialRampToValueAtTime(0.012, t0 + t + step * 0.9);
+    }
+    g.gain.setValueAtTime(0.0001, t0 + len);
+  }
+
+  // Westminster quarters: four phrases, the melody most school/clock chimes use.
+  var WESTMINSTER = [
+    [N.E5, N.D5, N.C5, N.G4],
+    [N.G4, N.C5, N.D5, N.E5],
+    [N.E5, N.C5, N.D5, N.G4],
+    [N.G4, N.D5, N.E5, N.C5]
+  ];
+  var SHORT = [[N.G5, N.E5, N.C5]];
+
+  function playSynth(t0){
+    var seq, gap, len, vol = 0.28;
+    if(cfg.tune === "strike"){
+      // repeated single strikes, ~8 seconds of ringing
+      for(var i = 0; i < 19; i++) note(N.C5, t0 + i * 0.42, 1.8, 0.30);
+      return t0 + 8;
+    }
+    if(cfg.tune === "dingdong"){
+      // classic two-tone doorbell, played twice
+      for(var d = 0; d < 2; d++){
+        note(N.E5, t0 + d * 2.2, 2.0, 0.30);
+        note(N.C5, t0 + d * 2.2 + 0.55, 2.6, 0.30);
+      }
+      return t0 + 5;
+    }
+    if(cfg.tune === "glock"){
+      // bright rising arpeggio, then a held top note
+      var rise = [N.C5, N.E5, N.G5, N.C6, N.E6, N.G6];
+      rise.forEach(function(f, i){ ping(f, t0 + i * 0.16, 1.4, 0.26); });
+      ping(N.C6, t0 + rise.length * 0.16 + 0.15, 3.0, 0.30);
+      ping(N.G6, t0 + rise.length * 0.16 + 0.15, 3.0, 0.16);
+      return t0 + 4;
+    }
+    if(cfg.tune === "electric"){
+      buzz(t0, 6);
+      return t0 + 6;
+    }
+    if(cfg.tune === "chime"){ seq = SHORT; gap = 0.65; len = 2.2; }
+    else { seq = WESTMINSTER; gap = 0.85; len = 3.0; }
+
+    var t = t0;
+    seq.forEach(function(phrase, pi){
+      phrase.forEach(function(f, ni){ note(f, t + ni * gap, len, vol); });
+      t += phrase.length * gap + (pi < seq.length - 1 ? 0.7 : 0);
+    });
+    return t + len * 0.6;
+  }
+
+  function playOnce(){
+    if(cfg.tune === "file" && cfg.file){
+      audioEl.currentTime = 0;
+      var p = audioEl.play();
+      if(p && p.catch) p.catch(function(){ if(ctx) playSynth(ctx.currentTime + 0.05); });
+      return 8;
+    }
+    if(!ctx) return 6;                       // not armed: visual flash only
+    if(ctx.state === "suspended") ctx.resume();
+    return playSynth(ctx.currentTime + 0.05) - ctx.currentTime;
+  }
+
+  function ring(){
+    var reps = Math.min(5, Math.max(1, cfg.reps || 1));
+    var total = 0;
+    for(var i = 0; i < reps; i++){
+      (function(i){ setTimeout(function(){ total = playOnce(); }, i * 9000); })(i);
+    }
+    var flashMs = reps * 9000;
+    document.body.classList.add("ringing");
+    setTimeout(function(){ document.body.classList.remove("ringing"); }, flashMs);
+  }
+
+  /* ---------- clock + scheduling ---------- */
+  var clockEl = document.getElementById("clock");
+  var dateEl  = document.getElementById("date");
+  var nextEl  = document.getElementById("next").querySelector("b");
+  var nameEl  = document.getElementById("nowName");
+  var subEl   = document.getElementById("nowSub");
+
+  // The school day. Each entry starts at its time and runs until the next one.
+  // Edit these to change what shows on the right of the bar.
+  var SCHEDULE = [
+    {t:"00:00", name:"Students arriving"},
+    {t:"08:30", name:"AM Registration"},
+    {t:"08:55", name:"P1"},
+    {t:"09:55", name:"Break"},
+    {t:"10:25", name:"P2"},
+    {t:"11:25", name:"Moving to P3"},
+    {t:"11:30", name:"P3"},
+    {t:"12:30", name:"Lunch"},
+    {t:"13:25", name:"P4"},
+    {t:"14:25", name:"Moving to P5"},
+    {t:"14:30", name:"P5"},
+    {t:"15:30", name:"Home time"},
+    {t:"17:25", name:"Time to go home"},
+    {t:"17:45", name:"School day over"}
+  ];
+
+  function mins(hhmm){ var p = hhmm.split(":"); return (+p[0])*60 + (+p[1]); }
+
+  function updateNow(nowMin){
+    var cur = SCHEDULE[0], nxt = null;
+    for(var i = 0; i < SCHEDULE.length; i++){
+      if(mins(SCHEDULE[i].t) <= nowMin){ cur = SCHEDULE[i]; nxt = SCHEDULE[i+1] || null; }
+    }
+    nameEl.textContent = cur.name;
+    if(nxt){
+      var left = mins(nxt.t) - nowMin;
+      subEl.textContent = "until " + nxt.t + " · " + left + " min left";
+    } else {
+      subEl.textContent = "";
+    }
+  }
+  var fired   = {};                        // each bell fires at most once per day
+
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+
+  function tick(){
+    var d = new Date();
+    var hhmm = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    clockEl.textContent = hhmm + ":" + pad(d.getSeconds());
+    dateEl.textContent = d.toLocaleDateString(undefined,
+      {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+
+    var key = d.toDateString() + " " + hhmm;
+    if(cfg.times.indexOf(hhmm) !== -1 && !fired[key]){
+      fired[key] = true;
+      ring();
+    }
+
+    updateNow(d.getHours()*60 + d.getMinutes());
+
+    var nowSecs = d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds();
+    var best = null;
+    cfg.times.slice().sort().forEach(function(t){
+      var p = t.split(":");
+      var s = (+p[0])*3600 + (+p[1])*60;
+      if(s > nowSecs && best === null) best = {t:t, s:s};
+    });
+    if(best){
+      var left = best.s - nowSecs;
+      nextEl.textContent = best.t + "  (" + Math.floor(left/60) + "m " + pad(left % 60) + "s)";
+    } else {
+      nextEl.textContent = "none left today";
+    }
+
+    // nudge: gear glows amber while sound is still locked
+    setBtn.classList.toggle("warn", !armed() && !(cfg.tune === "file" && cfg.file));
+  }
+
+  /* ---------- settings UI ---------- */
+  var dlg = document.getElementById("settings");
+  var listEl = document.getElementById("timeList");
+
+  function addRow(val){
+    var row = document.createElement("div");
+    row.className = "timeRow";
+    var inp = document.createElement("input");
+    inp.type = "time";
+    inp.value = val || "09:00";
+    var del = document.createElement("button");
+    del.textContent = "✕";
+    del.title = "Remove";
+    del.onclick = function(){ row.remove(); };
+    row.appendChild(inp); row.appendChild(del);
+    listEl.appendChild(row);
+  }
+
+  function openSettings(){
+    document.getElementById("url").value = cfg.url;
+    document.getElementById("delay").value = cfg.delay;
+    document.getElementById("tune").value = cfg.tune;
+    document.getElementById("reps").value = cfg.reps;
+    document.getElementById("file").value = cfg.file;
+    listEl.innerHTML = "";
+    cfg.times.slice().sort().forEach(addRow);
+    dlg.classList.add("open");
+  }
+
+  function readForm(){
+    cfg.url   = document.getElementById("url").value.trim();
+    cfg.delay = Math.max(0, parseInt(document.getElementById("delay").value, 10) || 0);
+    cfg.tune  = document.getElementById("tune").value;
+    cfg.reps  = Math.min(5, Math.max(1, parseInt(document.getElementById("reps").value, 10) || 1));
+    cfg.file  = document.getElementById("file").value.trim();
+    cfg.times = Array.prototype.map.call(listEl.querySelectorAll("input"), function(i){ return i.value; })
+                     .filter(Boolean).sort();
+    if(!cfg.times.length) cfg.times = DEFAULT_TIMES.slice();
+  }
+
+  /* ---------- full screen ----------
+     Inside a Google Sites embed the parent iframe may not allow fullscreen.
+     If the request is refused we open this page in its own tab instead, where
+     fullscreen always works. */
+  var fsBtn = document.getElementById("fsBtn");
+
+  function fsElement(){
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function toggleFullscreen(){
+    if(fsElement()){
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      return;
+    }
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    var done = req && req.call(el);
+    if(done && done.catch) done.catch(openStandalone);
+    else if(!req) openStandalone();
+  }
+
+  function openStandalone(){
+    // embedded and blocked: pop out to a real tab, carrying the current settings
+    var q = new URLSearchParams();
+    if(cfg.url) q.set("slides", cfg.url);
+    q.set("times", cfg.times.join(","));
+    if(cfg.delay) q.set("delay", cfg.delay);
+    q.set("tune", cfg.tune);
+    if(cfg.file) q.set("file", cfg.file);
+    window.open(location.pathname + "?" + q.toString(), "_blank", "noopener");
+  }
+
+  function syncFsIcon(){
+    fsBtn.innerHTML = fsElement() ? "&#10005;" : "&#9974;";
+    fsBtn.title = fsElement() ? "Leave full screen (F)" : "Full screen (F)";
+  }
+
+  fsBtn.onclick = toggleFullscreen;
+  document.addEventListener("fullscreenchange", syncFsIcon);
+  document.addEventListener("webkitfullscreenchange", syncFsIcon);
+
+  setBtn.onclick = openSettings;
+  document.getElementById("closeBtn").onclick = function(){ dlg.classList.remove("open"); };
+  document.getElementById("addTime").onclick = function(){ addRow("09:00"); };
+  document.getElementById("resetBtn").onclick = function(){
+    listEl.innerHTML = "";
+    DEFAULT_TIMES.forEach(addRow);
+  };
+  document.getElementById("saveBtn").onclick = function(){
+    readForm();
+    save(); applySlides(); tick();
+    dlg.classList.remove("open");
+    arm();                                 // saving is a click, so audio can unlock here
+  };
+  armBtn.onclick = arm;
+  document.getElementById("testBtn").onclick = function(){
+    readForm(); arm(); playOnce();
+  };
+  dlg.onclick = function(e){ if(e.target === dlg) dlg.classList.remove("open"); };
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") dlg.classList.remove("open");
+    if((e.key === "f" || e.key === "F") && !dlg.classList.contains("open")
+       && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)){
+      toggleFullscreen();
+    }
+  });
+
+  load();
+  applySlides();
+  tick();
+  setInterval(tick, 250);
+})();
+</script>
+</body>
+</html>
