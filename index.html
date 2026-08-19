@@ -222,9 +222,11 @@
   "use strict";
 
   var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
-  var KEY = "acsBell.v2";
+  var KEY = "acsBell.v3";
 
-  var cfg = { url:"", times:DEFAULT_TIMES.slice(), delay:0,
+  var DEFAULT_SLIDES = "https://docs.google.com/presentation/d/1Pze7Q9tzSjgYy_mHaepvB7kka_LzTgw_7Klp52RkE2g/edit";
+
+  var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true };
 
