@@ -27,7 +27,18 @@
     padding:8px 16px; background:var(--panel); border-top:1px solid #30363d;
   }
   #clock{font-size:clamp(26px,5.5vh,52px); font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px}
-  #date{color:var(--muted); font-size:13px}
+  #date{color:var(--fg); font-size:clamp(14px,2.1vh,20px); font-weight:600}
+  #wx{display:flex; align-items:center; gap:10px; border-left:1px solid #30363d; padding-left:16px}
+  #wxIcon{font-size:clamp(24px,4vh,36px); line-height:1}
+  #wxTemp{font-size:clamp(18px,2.9vh,26px); font-weight:700; font-variant-numeric:tabular-nums}
+  #wxSub{font-size:12px; color:var(--muted)}
+  #joke{
+    flex:1 1 0; min-width:0; text-align:center; padding:0 12px;
+    font-size:clamp(13px,2vh,18px); color:var(--fg); font-style:italic;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  #joke.fade{opacity:0; transition:opacity .4s}
+  #joke:not(.fade){opacity:1; transition:opacity .4s}
   #now{margin-left:auto; text-align:right; line-height:1.25}
   #nowName{font-size:clamp(20px,3.4vh,32px); font-weight:700}
   #nowSub{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
@@ -101,6 +112,14 @@
     <div id="clock">--:--:--</div>
     <div id="date"></div>
   </div>
+  <div id="wx" hidden>
+    <div id="wxIcon">&#9925;</div>
+    <div>
+      <div id="wxTemp">--&deg;</div>
+      <div id="wxSub">&mdash;</div>
+    </div>
+  </div>
+  <div id="joke" title="Click for another one"></div>
   <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
   <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
   <div id="now">
@@ -164,6 +183,27 @@
 
     <hr>
 
+    <div class="row">
+      <div>
+        <label for="place">Weather location</label>
+        <input id="place" type="text" placeholder="Egham">
+      </div>
+      <div>
+        <label>Bottom bar extras</label>
+        <div style="display:flex; gap:16px; padding-top:8px">
+          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showWx"> Weather</label>
+          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showJoke"> Joke</label>
+        </div>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:6px">
+      Weather comes from Open-Meteo &mdash; free, no account, no tracking. Needs internet;
+      if it is unreachable the weather panel simply hides itself.
+      Click the joke on the bar to skip to the next one.
+    </p>
+
+    <hr>
+
     <label>Bell times</label>
     <div id="timeList"></div>
     <button id="addTime" style="margin-top:10px">+ Add time</button>
@@ -185,7 +225,8 @@
   var KEY = "acsBell.v2";
 
   var cfg = { url:"", times:DEFAULT_TIMES.slice(), delay:0,
-              tune:"westminster", reps:1, file:"" };
+              tune:"westminster", reps:1, file:"",
+              place:"Egham", showWx:true, showJoke:true };
 
   function load(){
     try{
@@ -201,6 +242,9 @@
     if(q.get("delay"))  cfg.delay = parseInt(q.get("delay"), 10) || 0;
     if(q.get("tune"))   cfg.tune = q.get("tune");
     if(q.get("file"))   cfg.file = q.get("file");
+    if(q.get("place"))  cfg.place = q.get("place");
+    if(q.get("wx"))     cfg.showWx = q.get("wx") !== "0";
+    if(q.get("joke"))   cfg.showJoke = q.get("joke") !== "0";
   }
 
   function save(){
@@ -484,6 +528,9 @@
     document.getElementById("tune").value = cfg.tune;
     document.getElementById("reps").value = cfg.reps;
     document.getElementById("file").value = cfg.file;
+    document.getElementById("place").value = cfg.place;
+    document.getElementById("showWx").checked = cfg.showWx;
+    document.getElementById("showJoke").checked = cfg.showJoke;
     listEl.innerHTML = "";
     cfg.times.slice().sort().forEach(addRow);
     dlg.classList.add("open");
@@ -495,10 +542,113 @@
     cfg.tune  = document.getElementById("tune").value;
     cfg.reps  = Math.min(5, Math.max(1, parseInt(document.getElementById("reps").value, 10) || 1));
     cfg.file  = document.getElementById("file").value.trim();
+    cfg.place = document.getElementById("place").value.trim() || "Egham";
+    cfg.showWx = document.getElementById("showWx").checked;
+    cfg.showJoke = document.getElementById("showJoke").checked;
     cfg.times = Array.prototype.map.call(listEl.querySelectorAll("input"), function(i){ return i.value; })
                      .filter(Boolean).sort();
     if(!cfg.times.length) cfg.times = DEFAULT_TIMES.slice();
   }
+
+  /* ---------- weather (Open-Meteo: free, no key, CORS-friendly) ---------- */
+  var wxEl = document.getElementById("wx");
+  var wxIcon = document.getElementById("wxIcon");
+  var wxTemp = document.getElementById("wxTemp");
+  var wxSub  = document.getElementById("wxSub");
+
+  // WMO weather codes -> [emoji, words]
+  var WMO = {
+    0:["☀️","Clear"], 1:["🌤️","Mostly clear"], 2:["⛅","Partly cloudy"], 3:["☁️","Cloudy"],
+    45:["🌫️","Fog"], 48:["🌫️","Freezing fog"],
+    51:["🌦️","Light drizzle"], 53:["🌦️","Drizzle"], 55:["🌦️","Heavy drizzle"],
+    56:["🌧️","Freezing drizzle"], 57:["🌧️","Freezing drizzle"],
+    61:["🌦️","Light rain"], 63:["🌧️","Rain"], 65:["🌧️","Heavy rain"],
+    66:["🌧️","Freezing rain"], 67:["🌧️","Freezing rain"],
+    71:["🌨️","Light snow"], 73:["🌨️","Snow"], 75:["❄️","Heavy snow"], 77:["🌨️","Snow grains"],
+    80:["🌦️","Showers"], 81:["🌧️","Showers"], 82:["⛈️","Heavy showers"],
+    85:["🌨️","Snow showers"], 86:["❄️","Snow showers"],
+    95:["⛈️","Thunderstorm"], 96:["⛈️","Thunderstorm, hail"], 99:["⛈️","Thunderstorm, hail"]
+  };
+
+  var coords = null, coordsFor = "";
+
+  function geocode(place){
+    return fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name="
+                 + encodeURIComponent(place))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j.results || !j.results.length) throw new Error("place not found");
+        return {lat:j.results[0].latitude, lon:j.results[0].longitude, name:j.results[0].name};
+      });
+  }
+
+  function refreshWeather(){
+    if(!cfg.showWx){ wxEl.hidden = true; return; }
+    var p = (coords && coordsFor === cfg.place)
+          ? Promise.resolve(coords)
+          : geocode(cfg.place || "Egham").then(function(c){ coords = c; coordsFor = cfg.place; return c; });
+
+    p.then(function(c){
+      return fetch("https://api.open-meteo.com/v1/forecast?latitude=" + c.lat + "&longitude=" + c.lon +
+                   "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min" +
+                   "&timezone=auto&forecast_days=1")
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          var w = WMO[j.current.weather_code] || ["🌡️",""];
+          wxIcon.textContent = w[0];
+          wxTemp.textContent = Math.round(j.current.temperature_2m) + "°";
+          wxSub.textContent = w[1] + " · " + c.name + " · " +
+            Math.round(j.daily.temperature_2m_min[0]) + "–" +
+            Math.round(j.daily.temperature_2m_max[0]) + "°";
+          wxEl.hidden = false;
+        });
+    }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
+  }
+
+  /* ---------- joke of the moment ---------- */
+  var jokeEl = document.getElementById("joke");
+  var JOKES = [
+    "Why did the maths book look so sad? Because it had too many problems.",
+    "I told my computer I needed a break — it said \"why, are you feeling crashed?\"",
+    "What do you call a fish with no eyes? Fsh.",
+    "Why don't skeletons fight each other? They don't have the guts.",
+    "What's orange and sounds like a parrot? A carrot.",
+    "Why did the scarecrow win an award? He was outstanding in his field.",
+    "What did one wall say to the other? I'll meet you at the corner.",
+    "Why can't you trust an atom? They make up everything.",
+    "How does the Moon cut its hair? Eclipse it.",
+    "What do you call cheese that isn't yours? Nacho cheese.",
+    "Why did the student eat his homework? The teacher said it was a piece of cake.",
+    "What's a teacher's favourite nation? Expla-nation.",
+    "Why was the equal sign so humble? It knew it wasn't less than or greater than anyone.",
+    "What do you call a boomerang that doesn't come back? A stick.",
+    "Why did the bicycle fall over? It was two tired.",
+    "What did the ocean say to the beach? Nothing, it just waved.",
+    "Why do geologists read so much? They're really into rock and roll... eventually.",
+    "I would tell you a chemistry joke, but I know I wouldn't get a reaction.",
+    "What's the best thing about Switzerland? I don't know, but the flag is a big plus.",
+    "Why did the music teacher need a ladder? To reach the high notes.",
+    "How do you organise a space party? You planet.",
+    "What do you call a dinosaur with an extensive vocabulary? A thesaurus.",
+    "Why did the golfer bring two pairs of trousers? In case he got a hole in one.",
+    "What's brown and sticky? A stick.",
+    "Why are ghosts bad liars? Because you can see right through them."
+  ];
+
+  var jokeIdx = Math.floor(Math.random() * JOKES.length);
+
+  function showJoke(step){
+    if(!cfg.showJoke){ jokeEl.style.display = "none"; jokeEl.textContent = ""; return; }
+    jokeEl.style.display = "";
+    if(step) jokeIdx = (jokeIdx + 1) % JOKES.length;
+    jokeEl.classList.add("fade");
+    setTimeout(function(){
+      jokeEl.textContent = JOKES[jokeIdx];
+      jokeEl.classList.remove("fade");
+    }, 400);
+  }
+
+  jokeEl.onclick = function(){ showJoke(true); };
 
   /* ---------- full screen ----------
      Inside a Google Sites embed the parent iframe may not allow fullscreen.
@@ -551,7 +701,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applySlides(); tick();
+    save(); applySlides(); tick(); refreshWeather(); showJoke(false);
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -572,6 +722,12 @@
   applySlides();
   tick();
   setInterval(tick, 250);
+
+  refreshWeather();
+  setInterval(refreshWeather, 15 * 60 * 1000);   // every 15 minutes
+
+  showJoke(false);
+  setInterval(function(){ showJoke(true); }, 90 * 1000);   // a new one every 90 seconds
 })();
 </script>
 </body>
