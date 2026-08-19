@@ -32,13 +32,13 @@
   #wxIcon{font-size:clamp(24px,4vh,36px); line-height:1}
   #wxTemp{font-size:clamp(18px,2.9vh,26px); font-weight:700; font-variant-numeric:tabular-nums}
   #wxSub{font-size:12px; color:var(--muted)}
-  #joke{
+  #quote{
     flex:1 1 0; min-width:0; text-align:center; padding:0 12px;
     font-size:clamp(13px,2vh,18px); color:var(--fg); font-style:italic;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
-  #joke.fade{opacity:0; transition:opacity .4s}
-  #joke:not(.fade){opacity:1; transition:opacity .4s}
+  #quote.fade{opacity:0; transition:opacity .4s}
+  #quote:not(.fade){opacity:1; transition:opacity .4s}
   #now{margin-left:auto; text-align:right; line-height:1.25}
   #nowName{font-size:clamp(20px,3.4vh,32px); font-weight:700}
   #nowSub{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
@@ -119,7 +119,7 @@
       <div id="wxSub">&mdash;</div>
     </div>
   </div>
-  <div id="joke" title="Click for another one"></div>
+  <div id="quote" title="Quote of the day"></div>
   <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
   <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
   <div id="now">
@@ -192,14 +192,14 @@
         <label>Bottom bar extras</label>
         <div style="display:flex; gap:16px; padding-top:8px">
           <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showWx"> Weather</label>
-          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showJoke"> Joke</label>
+          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showQuote"> Quote</label>
         </div>
       </div>
     </div>
     <p class="hint" style="margin-top:6px">
       Weather comes from Open-Meteo &mdash; free, no account, no tracking. Needs internet;
       if it is unreachable the weather panel simply hides itself.
-      Click the joke on the bar to skip to the next one.
+      The quote of the day changes automatically at midnight.
     </p>
 
     <hr>
@@ -226,7 +226,7 @@
 
   var cfg = { url:"", times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
-              place:"Egham", showWx:true, showJoke:true };
+              place:"Egham", showWx:true, showQuote:true };
 
   function load(){
     try{
@@ -244,7 +244,7 @@
     if(q.get("file"))   cfg.file = q.get("file");
     if(q.get("place"))  cfg.place = q.get("place");
     if(q.get("wx"))     cfg.showWx = q.get("wx") !== "0";
-    if(q.get("joke"))   cfg.showJoke = q.get("joke") !== "0";
+    if(q.get("quote"))  cfg.showQuote = q.get("quote") !== "0";
   }
 
   function save(){
@@ -530,7 +530,7 @@
     document.getElementById("file").value = cfg.file;
     document.getElementById("place").value = cfg.place;
     document.getElementById("showWx").checked = cfg.showWx;
-    document.getElementById("showJoke").checked = cfg.showJoke;
+    document.getElementById("showQuote").checked = cfg.showQuote;
     listEl.innerHTML = "";
     cfg.times.slice().sort().forEach(addRow);
     dlg.classList.add("open");
@@ -544,7 +544,7 @@
     cfg.file  = document.getElementById("file").value.trim();
     cfg.place = document.getElementById("place").value.trim() || "Egham";
     cfg.showWx = document.getElementById("showWx").checked;
-    cfg.showJoke = document.getElementById("showJoke").checked;
+    cfg.showQuote = document.getElementById("showQuote").checked;
     cfg.times = Array.prototype.map.call(listEl.querySelectorAll("input"), function(i){ return i.value; })
                      .filter(Boolean).sort();
     if(!cfg.times.length) cfg.times = DEFAULT_TIMES.slice();
@@ -605,50 +605,72 @@
     }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
   }
 
-  /* ---------- joke of the moment ---------- */
-  var jokeEl = document.getElementById("joke");
-  var JOKES = [
-    "Why did the maths book look so sad? Because it had too many problems.",
-    "I told my computer I needed a break — it said \"why, are you feeling crashed?\"",
-    "What do you call a fish with no eyes? Fsh.",
-    "Why don't skeletons fight each other? They don't have the guts.",
-    "What's orange and sounds like a parrot? A carrot.",
-    "Why did the scarecrow win an award? He was outstanding in his field.",
-    "What did one wall say to the other? I'll meet you at the corner.",
-    "Why can't you trust an atom? They make up everything.",
-    "How does the Moon cut its hair? Eclipse it.",
-    "What do you call cheese that isn't yours? Nacho cheese.",
-    "Why did the student eat his homework? The teacher said it was a piece of cake.",
-    "What's a teacher's favourite nation? Expla-nation.",
-    "Why was the equal sign so humble? It knew it wasn't less than or greater than anyone.",
-    "What do you call a boomerang that doesn't come back? A stick.",
-    "Why did the bicycle fall over? It was two tired.",
-    "What did the ocean say to the beach? Nothing, it just waved.",
-    "Why do geologists read so much? They're really into rock and roll... eventually.",
-    "I would tell you a chemistry joke, but I know I wouldn't get a reaction.",
-    "What's the best thing about Switzerland? I don't know, but the flag is a big plus.",
-    "Why did the music teacher need a ladder? To reach the high notes.",
-    "How do you organise a space party? You planet.",
-    "What do you call a dinosaur with an extensive vocabulary? A thesaurus.",
-    "Why did the golfer bring two pairs of trousers? In case he got a hole in one.",
-    "What's brown and sticky? A stick.",
-    "Why are ghosts bad liars? Because you can see right through them."
+  /* ---------- quote of the day ---------- */
+  var quoteEl = document.getElementById("quote");
+  var QUOTES = [
+    ["It always seems impossible until it's done.", "Nelson Mandela"],
+    ["The best way to predict the future is to invent it.", "Alan Kay"],
+    ["Believe you can and you're halfway there.", "Theodore Roosevelt"],
+    ["Fall seven times, stand up eight.", "Japanese proverb"],
+    ["The expert in anything was once a beginner.", "Helen Hayes"],
+    ["We cannot become what we want by remaining what we are.", "Max De Pree"],
+    ["It does not matter how slowly you go, as long as you do not stop.", "Confucius"],
+    ["Nothing in life is to be feared, it is only to be understood.", "Marie Curie"],
+    ["A ship in harbour is safe, but that is not what ships are built for.", "John A. Shedd"],
+    ["Start where you are. Use what you have. Do what you can.", "Arthur Ashe"],
+    ["The only way to do great work is to love what you do.", "Steve Jobs"],
+    ["Whether you think you can or think you can't, you're right.", "Henry Ford"],
+    ["Courage is not the absence of fear, but the triumph over it.", "Nelson Mandela"],
+    ["Little by little, one travels far.", "J. R. R. Tolkien"],
+    ["Education is the most powerful weapon you can use to change the world.", "Nelson Mandela"],
+    ["Success is the sum of small efforts repeated day in and day out.", "Robert Collier"],
+    ["You miss 100% of the shots you don't take.", "Wayne Gretzky"],
+    ["Be curious, not judgemental.", "Walt Whitman"],
+    ["What we learn with pleasure we never forget.", "Alfred Mercier"],
+    ["Don't watch the clock; do what it does. Keep going.", "Sam Levenson"],
+    ["The mind is not a vessel to be filled but a fire to be kindled.", "Plutarch"],
+    ["Mistakes are proof that you are trying.", "Jennifer Lim"],
+    ["Do what you can, with what you have, where you are.", "Theodore Roosevelt"],
+    ["I have not failed. I've just found 10,000 ways that won't work.", "Thomas Edison"],
+    ["Try to be a rainbow in someone's cloud.", "Maya Angelou"],
+    ["The future belongs to those who believe in the beauty of their dreams.", "Eleanor Roosevelt"],
+    ["Genius is one percent inspiration and ninety-nine percent perspiration.", "Thomas Edison"],
+    ["If you want to go fast, go alone. If you want to go far, go together.", "African proverb"],
+    ["Perseverance is not a long race; it is many short races one after another.", "Walter Elliot"],
+    ["Not all those who wander are lost.", "J. R. R. Tolkien"],
+    ["Knowing is not enough; we must apply. Willing is not enough; we must do.", "Goethe"],
+    ["Kindness is a language which the deaf can hear and the blind can see.", "Mark Twain"],
+    ["The only person you are destined to become is the person you decide to be.", "Ralph Waldo Emerson"],
+    ["Everything you've ever wanted is on the other side of fear.", "George Addair"],
+    ["Learn as if you will live forever, live as if you will die tomorrow.", "Mahatma Gandhi"],
+    ["Great things are done by a series of small things brought together.", "Vincent van Gogh"],
+    ["It is never too late to be what you might have been.", "George Eliot"],
+    ["Act as if what you do makes a difference. It does.", "William James"],
+    ["The harder you work for something, the greater you'll feel when you achieve it.", "Anonymous"],
+    ["Doubt kills more dreams than failure ever will.", "Suzy Kassem"]
   ];
 
-  var jokeIdx = Math.floor(Math.random() * JOKES.length);
-
-  function showJoke(step){
-    if(!cfg.showJoke){ jokeEl.style.display = "none"; jokeEl.textContent = ""; return; }
-    jokeEl.style.display = "";
-    if(step) jokeIdx = (jokeIdx + 1) % JOKES.length;
-    jokeEl.classList.add("fade");
-    setTimeout(function(){
-      jokeEl.textContent = JOKES[jokeIdx];
-      jokeEl.classList.remove("fade");
-    }, 400);
+  // Same quote all day, a different one each day, cycling through the list.
+  function quoteForDay(d){
+    var day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+    return QUOTES[(day + d.getFullYear()) % QUOTES.length];
   }
 
-  jokeEl.onclick = function(){ showJoke(true); };
+  var shownQuote = "";
+
+  function showQuote(){
+    if(!cfg.showQuote){ quoteEl.style.display = "none"; quoteEl.textContent = ""; return; }
+    quoteEl.style.display = "";
+    var q = quoteForDay(new Date());
+    var text = "“" + q[0] + "” — " + q[1];
+    if(text === shownQuote) return;              // already on screen; leave it alone
+    shownQuote = text;
+    quoteEl.classList.add("fade");
+    setTimeout(function(){
+      quoteEl.textContent = text;
+      quoteEl.classList.remove("fade");
+    }, 400);
+  }
 
   /* ---------- full screen ----------
      Inside a Google Sites embed the parent iframe may not allow fullscreen.
@@ -701,7 +723,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applySlides(); tick(); refreshWeather(); showJoke(false);
+    save(); applySlides(); tick(); refreshWeather(); showQuote();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -726,8 +748,8 @@
   refreshWeather();
   setInterval(refreshWeather, 15 * 60 * 1000);   // every 15 minutes
 
-  showJoke(false);
-  setInterval(function(){ showJoke(true); }, 90 * 1000);   // a new one every 90 seconds
+  showQuote();
+  setInterval(showQuote, 60 * 1000);   // picks up the change at midnight
 })();
 </script>
 </body>
