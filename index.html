@@ -17,8 +17,18 @@
     font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     display:flex; flex-direction:column; overflow:hidden;
   }
-  #stage{flex:1 1 auto; position:relative; min-height:0; background:#000}
-  #stage iframe{width:100%;height:100%;border:0;display:block}
+  #stage{
+    flex:1 1 auto; position:relative; min-height:0; background:#000;
+    display:grid; place-items:center; container-type:size;
+  }
+  /* keep the deck a true 16:9 box: fill the width, or the height, whichever binds first */
+  #stage iframe{
+    border:0; display:block; aspect-ratio:16 / 9;
+    width:min(100cqw, calc(100cqh * 16 / 9)); height:auto;
+  }
+  @supports not (container-type: size){
+    #stage iframe{width:100%; height:100%; aspect-ratio:auto}
+  }
   #placeholder{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     flex-direction:column; gap:12px; color:var(--muted); text-align:center; padding:24px;
@@ -29,6 +39,11 @@
   }
   #clock{font-size:clamp(26px,5.5vh,52px); font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px}
   #date{color:var(--fg); font-size:clamp(14px,2.1vh,20px); font-weight:600}
+  #week{display:flex; align-items:center; gap:10px; border-left:1px solid #30363d; padding-left:16px}
+  #weekLetter{
+    font-size:clamp(22px,3.6vh,34px); font-weight:800; line-height:1; color:var(--accent);
+  }
+  #weekSub{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em}
   #wx{display:flex; align-items:center; gap:10px; border-left:1px solid #30363d; padding-left:16px}
   #wxIcon{font-size:clamp(24px,4vh,36px); line-height:1}
   #wxTemp{font-size:clamp(18px,2.9vh,26px); font-weight:700; font-variant-numeric:tabular-nums}
@@ -102,8 +117,10 @@
   }
 
   /* top ribbon: clock, weather, exam — each a different width */
-  body.cards #timeCard{grid-column:1 / 5;  grid-row:1; background:#11161d}
-  body.cards #wx      {grid-column:5 / 10;  grid-row:1; flex-direction:row; align-items:center; gap:18px}
+  body.cards #timeCard{grid-column:1 / 4;  grid-row:1; background:#11161d}
+  body.cards #week    {grid-column:4 / 6;  grid-row:1; flex-direction:column;
+                       align-items:flex-start; justify-content:center; gap:2px; background:#11161d}
+  body.cards #wx      {grid-column:6 / 10;  grid-row:1; flex-direction:row; align-items:center; gap:18px}
   body.cards #exam    {grid-column:10 / 13; grid-row:1; flex-direction:row; align-items:center; gap:18px;
                        border-right:0}
 
@@ -169,6 +186,9 @@
   .agendaRow.live{color:var(--fg); font-weight:700}
   .agendaRow.live time{color:var(--ring)}
 
+  body.cards #weekLetter{font-size:clamp(26px,5.2vh,54px)}
+  body.cards #weekSub{font-size:clamp(10px,1.5vh,13px)}
+
   body.ringing{animation:flash 1s steps(1,end) infinite}
   @keyframes flash{0%{background:var(--bg)}50%{background:#5a2d00}}
 
@@ -224,6 +244,10 @@
   <div id="timeCard">
     <div id="clock">--:--:--</div>
     <div id="date"></div>
+  </div>
+  <div id="week" hidden>
+    <div id="weekLetter">&mdash;</div>
+    <div id="weekSub">Week</div>
   </div>
   <div id="wx" hidden>
     <div id="wxIcon">&#9925;</div>
@@ -813,6 +837,47 @@
     }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
   }
 
+  /* ---------- week A / B ----------
+     Each row is [first day, last day, letter]. Dates outside every range
+     (holidays, half terms) show nothing at all. */
+  var WEEKS = [
+    ["2026-08-31","2026-09-05","A"], ["2026-09-07","2026-09-12","B"],
+    ["2026-09-14","2026-09-19","A"], ["2026-09-21","2026-09-26","B"],
+    ["2026-09-28","2026-10-03","A"], ["2026-10-05","2026-10-10","B"],
+    ["2026-10-12","2026-10-17","A"], ["2026-11-02","2026-11-07","B"],
+    ["2026-11-09","2026-11-14","A"], ["2026-11-16","2026-11-21","B"],
+    ["2026-11-23","2026-11-28","A"], ["2026-11-30","2026-12-05","B"],
+    ["2026-12-07","2026-12-12","A"], ["2026-12-14","2026-12-19","B"],
+    ["2027-01-04","2027-01-09","A"], ["2027-01-11","2027-01-16","B"],
+    ["2027-01-18","2027-01-23","A"], ["2027-01-25","2027-01-30","B"],
+    ["2027-02-01","2027-02-06","A"], ["2027-02-08","2027-02-13","B"],
+    ["2027-02-22","2027-02-27","A"], ["2027-03-01","2027-03-06","B"],
+    ["2027-03-08","2027-03-13","A"], ["2027-03-15","2027-03-20","B"],
+    ["2027-03-22","2027-03-24","A"], ["2027-04-12","2027-04-17","B"],
+    ["2027-04-19","2027-04-24","A"], ["2027-04-26","2027-05-01","B"],
+    ["2027-05-04","2027-05-09","A"], ["2027-05-10","2027-05-15","B"],
+    ["2027-05-17","2027-05-22","A"], ["2027-05-24","2027-05-29","B"],
+    ["2027-06-01","2027-06-05","A"], ["2027-06-07","2027-06-12","B"],
+    ["2027-06-14","2027-06-19","A"], ["2027-06-21","2027-06-24","B"]
+  ];
+
+  var weekEl = document.getElementById("week");
+  var weekLetterEl = document.getElementById("weekLetter");
+  var weekSubEl = document.getElementById("weekSub");
+
+  function updateWeek(){
+    var d = new Date();
+    var iso = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    var hit = null;
+    for(var i = 0; i < WEEKS.length; i++){
+      if(iso >= WEEKS[i][0] && iso <= WEEKS[i][1]){ hit = WEEKS[i]; break; }
+    }
+    if(!hit){ weekEl.hidden = true; return; }        // holidays: nothing to show
+    weekLetterEl.textContent = "Week " + hit[2];
+    weekSubEl.textContent = "timetable";
+    weekEl.hidden = false;
+  }
+
   /* ---------- exam countdown ---------- */
   var examEl = document.getElementById("exam");
   var examDaysEl = document.getElementById("examDays");
@@ -989,7 +1054,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applyLayout(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); lastReload = Date.now();
+    save(); applyLayout(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); updateWeek(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -1021,6 +1086,9 @@
   showQuote();
   updateExam();
   setInterval(updateExam, 60 * 1000);
+
+  updateWeek();
+  setInterval(updateWeek, 60 * 1000);
   setInterval(showQuote, 60 * 1000);   // picks up the change at midnight
 })();
 </script>
