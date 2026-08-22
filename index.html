@@ -102,76 +102,93 @@
 
 
   /* ---------- signage layout (body.cards) ----------
-     Full-bleed panels, no gaps, no rounded corners, no shadows.
-     Hierarchy comes from panel size and type scale, the way wall displays do it. */
+     Light, flat, full-bleed. Hierarchy from block size and one accent colour. */
   body.cards{
-    display:grid; padding:0; gap:0; background:#0b0f14;
+    --ink:#15202e; --paper:#f2efe9; --card:#ffffff; --line:#ddd7cc;
+    --accent:#0f2d5c; --hot:#f2b418; --dim:#6b7480;
+    display:grid; padding:0; gap:0; background:var(--paper); color:var(--ink);
     grid-template-columns:repeat(12, 1fr);
-    grid-template-rows:minmax(84px, 13vh) minmax(72px, 12vh) 1fr minmax(66px, 10vh) minmax(52px, 8vh);
+    grid-template-rows:minmax(58px, 8vh) 1fr minmax(84px, 12vh);
   }
-  body.cards #bar{display:contents}          /* children become grid items */
+  body.cards #bar{display:contents}
   body.cards #bar > *{
     margin:0; border:0; border-radius:0; box-shadow:none; min-width:0;
-    background:var(--panel); border-right:1px solid #222a35; border-bottom:1px solid #222a35;
-    padding:14px 22px; display:flex; flex-direction:column; justify-content:center; gap:2px;
+    background:transparent; padding:12px 20px;
+    display:flex; flex-direction:column; justify-content:center; gap:2px;
   }
 
-  /* top ribbon: clock, weather, exam — each a different width */
-  body.cards #timeCard{grid-column:1 / 4;  grid-row:1; background:#11161d}
-  body.cards #week    {grid-column:4 / 6;  grid-row:1; flex-direction:column;
-                       align-items:flex-start; justify-content:center; gap:2px; background:#11161d}
-  body.cards #wx      {grid-column:6 / 10;  grid-row:1; flex-direction:row; align-items:center; gap:18px}
-  body.cards #exam    {grid-column:10 / 13; grid-row:1; flex-direction:row; align-items:center; gap:18px;
-                       border-right:0}
+  /* the deck, 16:9 on white */
+  body.cards #stage{grid-column:1 / 9; grid-row:1 / 3; background:var(--card)}
 
-  body.cards #timeCard #clock{font-size:clamp(30px,6.4vh,68px); letter-spacing:0}
-  body.cards #timeCard #date {font-size:clamp(12px,1.9vh,18px); color:var(--muted); font-weight:500}
-  body.cards #wxIcon{font-size:clamp(28px,5.2vh,54px)}
-  body.cards #wxTemp{font-size:clamp(26px,5.2vh,54px)}
-  body.cards #wxSub {font-size:clamp(11px,1.7vh,15px)}
-  body.cards #examDays{font-size:clamp(26px,5.2vh,54px)}
-
-  /* the deck: the biggest thing on the wall */
-  body.cards #stage{grid-column:1 / 10; grid-row:2 / 5; border-right:1px solid #222a35}
-
-  /* right rail: what is happening now, then what is next */
+  /* rail header: what is happening right now */
   body.cards #now{
-    grid-column:10 / 13; grid-row:2; background:#161d27; border-right:0;
-    justify-content:center; text-align:left; padding:14px 22px;
+    grid-column:9 / 13; grid-row:1; background:var(--accent); color:#fff;
+    justify-content:center; text-align:left; padding:12px 22px;
   }
-  body.cards #nowName{font-size:clamp(26px,6.2vh,64px); line-height:1.05}
-  body.cards #nowSub {font-size:clamp(12px,2vh,19px); margin-top:6px}
+  body.cards #nowName{font-size:clamp(18px,3.2vh,32px); line-height:1.1; color:#fff}
+  body.cards #nowSub {font-size:clamp(11px,1.6vh,15px); color:rgba(255,255,255,.72)}
 
-  body.cards #next{
-    grid-column:10 / 13; grid-row:4; text-align:left; padding:14px 22px; border-right:0;
-    flex-direction:column; justify-content:center;
+  /* rail: the day as a stack of blocks */
+  body.cards #agenda{
+    grid-column:9 / 13; grid-row:2; background:var(--paper);
+    justify-content:flex-start; gap:0; padding:0; overflow:hidden;
   }
-  body.cards #next b{font-size:clamp(20px,4vh,42px)}
+  body.cards #agendaTitle{display:none}
+  body.cards #agendaList{flex:1 1 auto; display:flex; flex-direction:column; gap:0}
+  body.cards .agendaRow{
+    flex:1 1 0; display:flex; flex-direction:column; justify-content:center; gap:2px;
+    padding:8px 22px; background:var(--card); border-bottom:1px solid var(--line);
+    color:var(--ink); font-size:clamp(13px,2.1vh,20px); font-weight:600; opacity:1;
+  }
+  body.cards .agendaRow time{
+    order:2; font-size:clamp(10px,1.5vh,13px); font-weight:500; color:var(--dim);
+    letter-spacing:.04em; min-width:0;
+  }
+  body.cards .agendaRow.done{background:#eae5db; color:#9aa0a8; opacity:1}
+  body.cards .agendaRow.done time{color:#a9aeb5}
+  body.cards .agendaRow.live{background:var(--hot); color:#1b1405; font-weight:800}
+  body.cards .agendaRow.live time{color:rgba(27,20,5,.7)}
 
-  /* quote: a thin band across the very bottom */
-  body.cards #quote{
-    grid-column:1 / 13; grid-row:5; background:#11161d; border-right:0; border-bottom:0;
-    text-align:center; justify-content:center; font-size:clamp(13px,2.1vh,20px);
-    -webkit-line-clamp:2;
+  /* bottom strip */
+  body.cards #wx, body.cards #week, body.cards #exam,
+  body.cards #quote, body.cards #next, body.cards #timeCard{
+    grid-row:3; background:var(--accent); color:#fff; border-right:1px solid rgba(255,255,255,.12);
   }
+  body.cards #wx      {grid-column:1 / 3;  flex-direction:row; align-items:center; gap:12px}
+  body.cards #week    {grid-column:3 / 5;  border-left:0}
+  body.cards #exam    {grid-column:5 / 7;  flex-direction:row; align-items:center; gap:12px}
+  body.cards #quote   {grid-column:7 / 9; text-align:left; justify-content:center;
+                       font-size:clamp(11px,1.7vh,15px); -webkit-line-clamp:3; color:rgba(255,255,255,.8)}
+  body.cards #next    {grid-column:9 / 11; text-align:left; padding-left:20px; white-space:nowrap}
+  body.cards #timeCard{grid-column:11 / 13; align-items:flex-end; text-align:right; border-right:0}
+
+  body.cards #timeCard #clock{font-size:clamp(24px,4.6vh,46px); color:#fff}
+  body.cards #timeCard #date {font-size:clamp(10px,1.5vh,14px); color:rgba(255,255,255,.7); font-weight:500}
+  body.cards #wxIcon{font-size:clamp(22px,3.6vh,38px)}
+  body.cards #wxTemp{font-size:clamp(20px,3.4vh,36px); color:#fff}
+  body.cards #wxSub {font-size:clamp(10px,1.4vh,13px); color:rgba(255,255,255,.7)}
+  body.cards #weekLetter{font-size:clamp(20px,3.4vh,36px); color:var(--hot)}
+  body.cards #weekSub{font-size:clamp(9px,1.3vh,12px); color:rgba(255,255,255,.6)}
+  body.cards #examDays{font-size:clamp(20px,3.4vh,36px); color:var(--hot)}
+  body.cards #examName{color:rgba(255,255,255,.7)}
+  body.cards #examName b{color:#fff}
+  body.cards #next{color:rgba(255,255,255,.7)}
+  body.cards #next b{color:#fff; font-size:clamp(16px,2.8vh,28px)}
+
+  /* controls sit on a light background here */
+  body.cards #tools button{background:rgba(255,255,255,.9); color:var(--ink); border-color:var(--line)}
 
   /* narrow screens: stack rather than squash */
   @media (max-width:900px){
     body.cards{grid-template-columns:repeat(2, 1fr); grid-template-rows:auto}
-    body.cards #stage{grid-column:1 / 3; grid-row:auto; min-height:46vh}
-    body.cards #timeCard{grid-column:1 / 3; grid-row:auto}
-    body.cards #wx  {grid-column:1 / 2; grid-row:auto}
-    body.cards #exam{grid-column:2 / 3; grid-row:auto}
-    body.cards #now {grid-column:1 / 3; grid-row:auto}
-    body.cards #next{grid-column:1 / 3; grid-row:auto}
-    body.cards #quote{grid-column:1 / 3; grid-row:auto}
+    body.cards #stage{grid-column:1 / 3; grid-row:auto; min-height:40vh}
+    body.cards #now  {grid-column:1 / 3; grid-row:auto}
+    body.cards #agenda{grid-column:1 / 3; grid-row:auto; min-height:40vh}
+    body.cards #wx, body.cards #week, body.cards #exam,
+    body.cards #quote, body.cards #next, body.cards #timeCard{grid-column:1 / 3; grid-row:auto}
   }
 
   body:not(.cards) #agenda{display:none}
-  body.cards #agenda{
-    grid-column:10 / 13; grid-row:3; border-right:0; overflow:hidden;
-    justify-content:flex-start; gap:0; padding:14px 22px;
-  }
   #agendaTitle{
     font-size:12px; letter-spacing:.12em; text-transform:uppercase;
     color:var(--muted); margin-bottom:10px;
@@ -185,9 +202,6 @@
   .agendaRow.done{opacity:.35}
   .agendaRow.live{color:var(--fg); font-weight:700}
   .agendaRow.live time{color:var(--ring)}
-
-  body.cards #weekLetter{font-size:clamp(26px,5.2vh,54px)}
-  body.cards #weekSub{font-size:clamp(10px,1.5vh,13px)}
 
   body.ringing{animation:flash 1s steps(1,end) infinite}
   @keyframes flash{0%{background:var(--bg)}50%{background:#5a2d00}}
