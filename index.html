@@ -299,8 +299,8 @@
       <div>
         <label for="layout">Display layout</label>
     <select id="layout">
+      <option value="cards">Signage — slides plus a live schedule rail (default)</option>
       <option value="full">Full display — slides fill the screen, one solid bar</option>
-      <option value="cards">Signage — full-bleed panels, slides plus a live info rail</option>
     </select>
 
     <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
@@ -407,7 +407,7 @@
   "use strict";
 
   var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
-  var KEY = "acsBell.v4";
+  var KEY = "acsBell.v5";
 
   var DEFAULT_EXAMS = "2027-04-23 = Exams begin";
 
@@ -416,7 +416,7 @@
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
-              exams:DEFAULT_EXAMS, layout:"full" };
+              exams:DEFAULT_EXAMS, layout:"cards" };
 
   function load(){
     try{
