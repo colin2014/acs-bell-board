@@ -118,6 +118,7 @@
     grid-column:2; grid-row:1; display:flex; flex-direction:column; min-width:0; overflow:hidden;
   }
   body.cards #strip{
+    position:relative;
     grid-column:1 / 3; grid-row:2; display:flex; align-items:stretch;
     background:var(--accent); min-height:clamp(72px, 11vh, 132px);
   }
@@ -185,6 +186,21 @@
   body.dragging{cursor:col-resize; user-select:none}
   body.dragging iframe{pointer-events:none}     /* keep the drag from being eaten by the deck */
 
+  /* drag grips: vertical between strip panels, horizontal on panel edges */
+  .grip{display:none; position:absolute; z-index:5}
+  body.cards .grip{display:block}
+  .grip::after{
+    content:""; position:absolute; background:rgba(255,255,255,.55); opacity:0;
+    transition:opacity .18s; border-radius:2px;
+  }
+  .grip:hover::after{opacity:1}
+  .grip-x{top:0; bottom:0; right:-4px; width:9px; cursor:col-resize}
+  .grip-x::after{top:50%; left:50%; transform:translate(-50%,-50%); width:3px; height:40%}
+  .grip-y{left:0; right:0; bottom:-4px; height:9px; cursor:row-resize}
+  .grip-y::after{left:50%; top:50%; transform:translate(-50%,-50%); height:3px; width:40px}
+  body.cards #rail .grip::after, body.cards #agenda .grip::after{background:rgba(0,0,0,.35)}
+  body.dragging .grip::after{opacity:1}
+
   /* per-panel controls */
   .pctl{
     position:absolute; top:4px; right:6px; display:flex; gap:3px; z-index:4;
@@ -248,7 +264,18 @@
     background:var(--panel); border:1px solid #30363d; border-radius:10px;
     width:min(580px,100%); max-height:92vh; overflow:auto; padding:20px;
   }
-  .card h2{margin:0 0 4px; font-size:20px}
+  .card h2{margin:0; font-size:20px}
+  .cardHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px}
+  #closeX{width:32px; height:32px; padding:0; border-radius:6px; font-size:14px; line-height:1;
+          display:flex; align-items:center; justify-content:center}
+  #tabs{display:flex; gap:4px; border-bottom:1px solid #30363d; margin-bottom:6px; flex-wrap:wrap}
+  .tab{background:transparent; border:0; border-bottom:2px solid transparent; border-radius:0;
+       padding:9px 14px; color:var(--muted); font-size:14px}
+  .tab:hover{color:var(--fg); border-color:#30363d}
+  .tab.on{color:var(--fg); border-color:var(--accent); font-weight:600}
+  .page{display:none}
+  .page.on{display:block}
+  .page > label:first-child{margin-top:6px}
   .hint{margin:0 0 16px; color:var(--muted); font-size:13px}
   label{display:block; margin:14px 0 4px; font-size:13px; color:var(--muted)}
   textarea{
@@ -323,119 +350,127 @@
 
 <div id="settings">
   <div class="card">
-    <h2>Settings</h2>
-    <p class="hint">Saved in this browser. Changes apply immediately.</p>
-
-    <label for="url">Google Slides link</label>
-    <input id="url" type="text" placeholder="https://docs.google.com/presentation/d/..../edit">
-    <p class="hint" style="margin-top:6px">
-      Paste the normal edit link, a share link, or a <b>File &rarr; Share &rarr; Publish to the web</b>
-      link. The deck must be viewable by anyone with the link (or by everyone at your school domain).
-    </p>
-
-    <div class="row">
-      <div>
-        <label for="layout">Display layout</label>
-    <select id="layout">
-      <option value="cards">Signage — slides plus a live schedule rail (default)</option>
-      <option value="full">Full display — slides fill the screen, one solid bar</option>
-    </select>
-
-    <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
-        <input id="delay" type="number" min="0" step="1" value="0">
-      </div>
-      <div>
-        <label for="refresh">Reload deck every (minutes, 0 = off)</label>
-        <input id="refresh" type="number" min="0" step="1" value="10">
-      </div>
-    </div>
-    <p class="hint" style="margin-top:6px">
-      Google caches the embedded deck, so edits you make in Slides do not appear by
-      themselves. Reloading picks up the current version &mdash; but it jumps back to
-      slide 1, so a longer gap is calmer for a display in a lesson.
-      <b>Refresh now</b> forces it immediately.
-    </p>
-    <button id="reloadBtn" style="margin-top:6px">&#8635; Refresh now</button>
-
-    <hr>
-
-    <div class="row">
-      <div>
-        <label for="tune">Bell sound</label>
-        <select id="tune">
-          <option value="westminster">Westminster chime (long)</option>
-          <option value="chime">Short 3-note chime</option>
-          <option value="strike">Bell strikes</option>
-          <option value="dingdong">Ding-dong (two-tone)</option>
-          <option value="glock">Glockenspiel rise (bright)</option>
-          <option value="electric">Old school electric bell</option>
-          <option value="file">Custom sound file (URL below)</option>
-        </select>
-      </div>
-      <div>
-        <label for="reps">Repeat</label>
-        <input id="reps" type="number" min="1" max="5" step="1" value="1">
-      </div>
+    <div class="cardHead">
+      <h2>Settings</h2>
+      <button id="closeX" title="Close" aria-label="Close">&#10005;</button>
     </div>
 
-    <label for="file">Custom sound file URL (.mp3 / .wav / .ogg)</label>
-    <input id="file" type="text" placeholder="https://.../chime.mp3">
-    <p class="hint" style="margin-top:6px">
-      Optional. Must be a direct link that allows hot-linking &mdash; a Google&nbsp;Drive share
-      link will <i>not</i> play. If it fails to load, the built-in chime plays instead.
-    </p>
+    <nav id="tabs">
+      <button class="tab on" data-page="display">Display</button>
+      <button class="tab" data-page="bell">Bell</button>
+      <button class="tab" data-page="info">Info panels</button>
+      <button class="tab" data-page="times">Times</button>
+    </nav>
 
-    <div class="row" style="margin-top:14px">
-      <div><button id="armBtn" style="width:100%">&#128276; Enable sound</button></div>
-      <div><button id="testBtn" style="width:100%">&#9654; Test bell</button></div>
-    </div>
-    <p class="hint" style="margin-top:8px">
-      Browsers block audio until someone clicks. Press <b>Enable sound</b> once after the
-      display starts up each day.
-    </p>
+    <!-- ---------------- display ---------------- -->
+    <section class="page on" data-page="display">
+      <label for="layout">Layout</label>
+      <select id="layout">
+        <option value="cards">Signage — slides plus a live schedule rail (default)</option>
+        <option value="full">Full display — slides fill the screen, one solid bar</option>
+      </select>
 
-    <hr>
+      <label for="url">Google Slides link</label>
+      <input id="url" type="text" placeholder="https://docs.google.com/presentation/d/..../edit">
+      <p class="hint">Edit, share, or <b>Publish to the web</b> link. The deck must be viewable by
+        anyone with the link.</p>
 
-    <label for="exams">Exam countdown — one per line, <code>YYYY-MM-DD = name</code></label>
-    <textarea id="exams" rows="4" placeholder="2027-05-03 = IB Exams begin&#10;2027-05-14 = GCSE Maths Paper 1"></textarea>
-    <p class="hint" style="margin-top:6px">
-      Shows the days left until the next one. Dates in the past are ignored automatically,
-      so old entries can stay in the list. Click the countdown on the bar to see the one after.
-      Leave empty to hide it.
-    </p>
-
-    <hr>
-
-    <div class="row">
-      <div>
-        <label for="place">Weather location</label>
-        <input id="place" type="text" placeholder="Egham">
-      </div>
-      <div>
-        <label>Bottom bar extras</label>
-        <div style="display:flex; gap:16px; padding-top:8px">
-          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showWx"> Weather</label>
-          <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showQuote"> Quote</label>
+      <div class="row">
+        <div>
+          <label for="delay">Auto-advance (seconds, 0 = off)</label>
+          <input id="delay" type="number" min="0" step="1" value="0">
+        </div>
+        <div>
+          <label for="refresh">Reload deck every (minutes, 0 = off)</label>
+          <input id="refresh" type="number" min="0" step="1" value="10">
         </div>
       </div>
-    </div>
-    <p class="hint" style="margin-top:6px">
-      Weather comes from Open-Meteo &mdash; free, no account, no tracking. Needs internet;
-      if it is unreachable the weather panel simply hides itself.
-      The quote of the day changes automatically at midnight.
-    </p>
+      <p class="hint">Google caches the deck, so edits need a reload to appear. Reloading returns
+        to slide 1.</p>
+      <button id="reloadBtn">&#8635; Refresh deck now</button>
 
-    <hr>
+      <hr>
 
-    <label>Bell times</label>
-    <div id="timeList"></div>
-    <button id="addTime" style="margin-top:10px">+ Add time</button>
+      <label>Panels</label>
+      <p class="hint" style="margin-bottom:10px">
+        Hover any panel on the board for <b>&minus; + &#10005;</b> (smaller, bigger, hide), and drag
+        its edge to give it more or less room.
+      </p>
+      <div id="panelList"></div>
+      <button id="resetPanels" class="primary" style="margin-top:12px">&#8635; Reset view — show every panel</button>
+    </section>
 
-    <label>Hidden panels</label>
-    <div id="panelList"></div>
+    <!-- ---------------- bell ---------------- -->
+    <section class="page" data-page="bell">
+      <div class="row">
+        <div>
+          <label for="tune">Bell sound</label>
+          <select id="tune">
+            <option value="westminster">Westminster chime (long)</option>
+            <option value="chime">Short 3-note chime</option>
+            <option value="strike">Bell strikes</option>
+            <option value="dingdong">Ding-dong (two-tone)</option>
+            <option value="glock">Glockenspiel rise (bright)</option>
+            <option value="electric">Old school electric bell</option>
+            <option value="file">Custom sound file (URL below)</option>
+          </select>
+        </div>
+        <div>
+          <label for="reps">Repeat</label>
+          <input id="reps" type="number" min="1" max="5" step="1" value="1">
+        </div>
+      </div>
+
+      <label for="file">Custom sound file URL (.mp3 / .wav / .ogg)</label>
+      <input id="file" type="text" placeholder="https://.../chime.mp3">
+      <p class="hint">Must allow hot-linking — a Google&nbsp;Drive share link will not play.
+        Falls back to the built-in chime.</p>
+
+      <div class="row" style="margin-top:14px">
+        <div><button id="armBtn" style="width:100%">&#128276; Enable sound</button></div>
+        <div><button id="testBtn" style="width:100%">&#9654; Test bell</button></div>
+      </div>
+      <p class="hint">Browsers block audio until someone clicks. Press <b>Enable sound</b> once
+        after the display starts each day.</p>
+    </section>
+
+    <!-- ---------------- info panels ---------------- -->
+    <section class="page" data-page="info">
+      <div class="row">
+        <div>
+          <label for="place">Weather location</label>
+          <input id="place" type="text" placeholder="Egham">
+        </div>
+        <div>
+          <label>Show</label>
+          <div style="display:flex; gap:16px; padding-top:8px">
+            <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showWx"> Weather</label>
+            <label style="margin:0; color:var(--fg)"><input type="checkbox" id="showQuote"> Quote</label>
+          </div>
+        </div>
+      </div>
+      <p class="hint">Weather comes from Open-Meteo — free, no account. The quote of the day changes
+        at midnight.</p>
+
+      <label for="exams">Exam countdown — one per line, <code>YYYY-MM-DD = name</code></label>
+      <textarea id="exams" rows="4" placeholder="2027-04-23 = Exams begin"></textarea>
+      <p class="hint">Past dates are ignored, so old entries can stay. Click the countdown on the
+        board to see the one after.</p>
+    </section>
+
+    <!-- ---------------- times ---------------- -->
+    <section class="page" data-page="times">
+      <label>Bell times</label>
+      <div id="timeList"></div>
+      <button id="addTime" style="margin-top:10px">+ Add time</button>
+      <button id="resetBtn" style="margin-top:10px">Reset to default times</button>
+      <p class="hint" style="margin-top:14px">
+        The period names on the board (P1, Break, Lunch…) and the Week A/B calendar are set in the
+        <code>SCHEDULE</code> and <code>WEEKS</code> lists near the top of the page source.
+      </p>
+    </section>
 
     <div class="actions">
-      <button id="resetBtn">Reset times</button>
       <div class="spacer"></div>
       <button id="closeBtn">Cancel</button>
       <button id="saveBtn" class="primary">Save</button>
@@ -448,7 +483,7 @@
   "use strict";
 
   var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
-  var KEY = "acsBell.v6";
+  var KEY = "acsBell.v7";
 
   var DEFAULT_EXAMS = "2027-04-23 = Exams begin";
 
@@ -457,7 +492,7 @@
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
-              exams:DEFAULT_EXAMS, layout:"cards", panels:{}, rail:30 };
+              exams:DEFAULT_EXAMS, layout:"cards", panels:{}, rail:30, stripH:0, nowH:0 };
 
   function load(){
     try{
@@ -996,6 +1031,96 @@
     });
   }
 
+
+  /* ---------- drag helpers ---------- */
+  function onDrag(handle, start, move){
+    handle.addEventListener("pointerdown", function(e){
+      if(cfg.layout !== "cards") return;
+      e.preventDefault(); e.stopPropagation();
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+      document.body.classList.add("dragging");
+      var ctx = start(e);
+      function mv(ev){ move(ev, ctx); }
+      function up(ev){
+        document.body.classList.remove("dragging");
+        handle.removeEventListener("pointermove", mv);
+        handle.removeEventListener("pointerup", up);
+        handle.removeEventListener("pointercancel", up);
+        try{ handle.releasePointerCapture(ev.pointerId); }catch(err){}
+        save();
+      }
+      handle.addEventListener("pointermove", mv);
+      handle.addEventListener("pointerup", up);
+      handle.addEventListener("pointercancel", up);
+    });
+  }
+
+  function addGrip(el, kind){
+    var g = document.createElement("div");
+    g.className = "grip grip-" + kind;
+    g.title = kind === "x" ? "Drag to make this panel wider or narrower"
+                           : "Drag to make this panel taller or shorter";
+    el.appendChild(g);
+    return g;
+  }
+
+  /* each strip panel: drag its right edge to take space from its neighbours */
+  function buildGrips(){
+    var strip = document.getElementById("strip");
+    Array.prototype.forEach.call(strip.children, function(el){
+      if(!el.id || el.querySelector(":scope > .grip")) return;
+      var g = addGrip(el, "x");
+      onDrag(g, function(e){
+        return {x:e.clientX, w:el.getBoundingClientRect().width,
+                f:panelState(el.id).f || 1};
+      }, function(e, c){
+        var w = Math.max(60, c.w + (e.clientX - c.x));
+        var f = Math.min(8, Math.max(0.25, c.f * (w / c.w)));
+        panelState(el.id).f = f;
+        el.style.flexGrow = f;
+      });
+    });
+
+    // strip height: drag its top edge
+    var sh = document.createElement("div");
+    sh.className = "grip grip-y";
+    sh.style.cssText = "top:-4px; bottom:auto";
+    sh.title = "Drag to make the bottom strip taller or shorter";
+    strip.appendChild(sh);
+    onDrag(sh, function(e){
+      return {y:e.clientY, h:strip.getBoundingClientRect().height};
+    }, function(e, c){
+      cfg.stripH = Math.min(window.innerHeight * 0.5,
+                    Math.max(56, c.h - (e.clientY - c.y)));
+      strip.style.height = cfg.stripH + "px";
+    });
+
+    // the now panel: drag its bottom edge against the schedule
+    var now = document.getElementById("now");
+    if(now && !now.querySelector(":scope > .grip")){
+      var gy = addGrip(now, "y");
+      onDrag(gy, function(e){
+        return {y:e.clientY, h:now.getBoundingClientRect().height};
+      }, function(e, c){
+        cfg.nowH = Math.min(window.innerHeight * 0.6,
+                    Math.max(48, c.h + (e.clientY - c.y)));
+        now.style.height = cfg.nowH + "px";
+      });
+    }
+  }
+
+  function applySizes(){
+    var strip = document.getElementById("strip");
+    strip.style.height = cfg.stripH ? cfg.stripH + "px" : "";
+    var now = document.getElementById("now");
+    if(now) now.style.height = cfg.nowH ? cfg.nowH + "px" : "";
+    PANELS.forEach(function(p){
+      var el = document.getElementById(p.id);
+      var f = cfg.panels[p.id] && cfg.panels[p.id].f;
+      if(el && el.parentNode === strip) el.style.flexGrow = f || "";
+    });
+  }
+
   /* ---------- week A / B ----------
      Each row is [first day, last day, letter]. Dates outside every range
      (holidays, half terms) show nothing at all. */
@@ -1205,16 +1330,36 @@
     readForm(); save(); applySlides(); reloadSlides();
   };
 
+  Array.prototype.forEach.call(document.querySelectorAll("#tabs .tab"), function(t){
+    t.onclick = function(){
+      document.querySelectorAll("#tabs .tab").forEach(function(x){ x.classList.toggle("on", x === t); });
+      document.querySelectorAll(".page").forEach(function(pg){
+        pg.classList.toggle("on", pg.dataset.page === t.dataset.page);
+      });
+    };
+  });
+  document.getElementById("closeX").onclick = function(){ dlg.classList.remove("open"); };
+
   setBtn.onclick = openSettings;
   document.getElementById("closeBtn").onclick = function(){ dlg.classList.remove("open"); };
   document.getElementById("addTime").onclick = function(){ addRow("09:00"); };
+  document.getElementById("resetPanels").onclick = function(){
+    cfg.panels = {}; cfg.stripH = 0; cfg.nowH = 0; cfg.rail = 30;
+    document.body.style.setProperty("--rail", "30%");
+    PANELS.forEach(function(p){
+      var el = document.getElementById(p.id);
+      if(el){ el.style.zoom = ""; el.style.flexGrow = ""; el.style.height = ""; if(!selfHiding[p.id]) el.hidden = false; }
+    });
+    applySizes(); save(); refreshWeather(); updateWeek(); updateExam(); renderPanelList();
+  };
+
   document.getElementById("resetBtn").onclick = function(){
     listEl.innerHTML = "";
     DEFAULT_TIMES.forEach(addRow);
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applyLayout(); applyPanels(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); updateWeek(); lastReload = Date.now();
+    save(); applyLayout(); applyPanels(); applySizes(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); updateWeek(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -1235,6 +1380,8 @@
   applyLayout();
   applyPanels();
   buildPanelControls();
+  buildGrips();
+  applySizes();
   initSplitter();
   applySlides();
   tick();
