@@ -43,6 +43,7 @@
   #weekLetter{
     font-size:clamp(22px,3.6vh,34px); font-weight:800; line-height:1; color:var(--accent);
   }
+  #week.ahead #weekLetter{opacity:.6}
   #weekSub{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em}
   #wx{display:flex; align-items:center; gap:10px; border-left:1px solid #30363d; padding-left:16px}
   #wxIcon{font-size:clamp(24px,4vh,36px); line-height:1}
@@ -165,6 +166,7 @@
   body.cards #wxTemp{font-size:clamp(18px,3.2vh,34px); color:#fff}
   body.cards #wxSub {font-size:clamp(10px,1.4vh,13px); color:rgba(255,255,255,.7)}
   body.cards #weekLetter{font-size:clamp(18px,3.2vh,34px); color:var(--hot)}
+  body.cards #week.ahead #weekLetter{color:rgba(255,255,255,.55)}
   body.cards #weekSub{font-size:clamp(9px,1.3vh,12px); color:rgba(255,255,255,.6)}
   body.cards #examDays{font-size:clamp(18px,3.2vh,34px); color:var(--hot)}
   body.cards #examName{color:rgba(255,255,255,.7)}
@@ -1150,16 +1152,35 @@
   var weekSubEl = document.getElementById("weekSub");
 
   function updateWeek(){
+    if(panelState("week").h){ weekEl.hidden = true; return; }
     var d = new Date();
     var iso = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-    var hit = null;
+
+    var hit = null, next = null;
     for(var i = 0; i < WEEKS.length; i++){
       if(iso >= WEEKS[i][0] && iso <= WEEKS[i][1]){ hit = WEEKS[i]; break; }
+      if(!next && iso < WEEKS[i][0]) next = WEEKS[i];
     }
-    if(!hit || panelState("week").h){ weekEl.hidden = true; return; }
-    weekLetterEl.textContent = "Week " + hit[2];
-    weekSubEl.textContent = "timetable";
-    weekEl.hidden = false;
+
+    if(hit){
+      weekLetterEl.textContent = "Week " + hit[2];
+      weekSubEl.textContent = "timetable";
+      weekEl.classList.remove("ahead");
+      weekEl.hidden = false;
+      return;
+    }
+
+    if(next){
+      // between terms or over a weekend: say what is coming rather than vanish
+      var from = new Date(+next[0].slice(0,4), +next[0].slice(5,7) - 1, +next[0].slice(8,10));
+      weekLetterEl.textContent = "Week " + next[2];
+      weekSubEl.textContent = "from " + from.toLocaleDateString(undefined, {day:"numeric", month:"short"});
+      weekEl.classList.add("ahead");
+      weekEl.hidden = false;
+      return;
+    }
+
+    weekEl.hidden = true;                    // past the end of the published calendar
   }
 
   /* ---------- exam countdown ---------- */
