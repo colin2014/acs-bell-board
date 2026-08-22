@@ -6,6 +6,7 @@ A single-file display board for a classroom or corridor screen:
 - **Clock** along the bottom
 - **Bell** that chimes at the school's period times
 - **Current part of the school day** on the right ("P2 · until 11:25 · 14 min left")
+- **Exam countdown**, **weather**, and an **inspirational quote of the day** on the bottom bar
 
 Everything is in [`index.html`](index.html) — no build step, no dependencies, no server.
 The chimes are synthesised in the browser, so there is no audio file to host.
@@ -32,7 +33,7 @@ passed in the URL, which always wins:
 ?slides=<slides url>&times=08:30,08:55,10:25&delay=20&tune=glock&file=<mp3 url>
 ```
 
-`tune` is one of `westminster`, `chime`, `strike`, `dingdong`, `glock`, `electric`, `file`.
+`exams` is not URL-settable; set it in the ⚙ panel. `tune` is one of `westminster`, `chime`, `strike`, `dingdong`, `glock`, `electric`, `file`.
 
 ## Sound
 

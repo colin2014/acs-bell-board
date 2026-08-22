@@ -32,6 +32,17 @@
   #wxIcon{font-size:clamp(24px,4vh,36px); line-height:1}
   #wxTemp{font-size:clamp(18px,2.9vh,26px); font-weight:700; font-variant-numeric:tabular-nums}
   #wxSub{font-size:12px; color:var(--muted)}
+  #exam{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    border-left:1px solid #30363d; padding-left:16px;
+  }
+  #examDays{
+    font-size:clamp(20px,3.4vh,32px); font-weight:700; font-variant-numeric:tabular-nums;
+    color:var(--ring); line-height:1;
+  }
+  #examName{font-size:12px; color:var(--muted); max-width:22ch}
+  #examName b{display:block; color:var(--fg); font-size:13px}
+  #exam.soon #examDays{color:#f85149}
   #quote{
     flex:1 1 0; min-width:0; text-align:center; padding:0 12px;
     font-size:clamp(13px,2vh,18px); color:var(--fg); font-style:italic;
@@ -80,6 +91,11 @@
   .card h2{margin:0 0 4px; font-size:20px}
   .hint{margin:0 0 16px; color:var(--muted); font-size:13px}
   label{display:block; margin:14px 0 4px; font-size:13px; color:var(--muted)}
+  textarea{
+    width:100%; padding:8px 10px; background:#0d1117; color:var(--fg);
+    border:1px solid #30363d; border-radius:6px; font-size:14px; font-family:inherit; resize:vertical;
+  }
+  code{background:#0d1117; padding:1px 5px; border-radius:4px; font-size:12px}
   input[type=text],input[type=number],select{
     width:100%; padding:8px 10px; background:#0d1117; color:var(--fg);
     border:1px solid #30363d; border-radius:6px; font-size:15px;
@@ -118,6 +134,10 @@
       <div id="wxTemp">--&deg;</div>
       <div id="wxSub">&mdash;</div>
     </div>
+  </div>
+  <div id="exam" hidden title="Click to see the next one">
+    <div id="examDays">--</div>
+    <div id="examName"><b>&mdash;</b><span id="examWhen"></span></div>
   </div>
   <div id="quote" title="Quote of the day"></div>
   <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
@@ -198,6 +218,16 @@
 
     <hr>
 
+    <label for="exams">Exam countdown — one per line, <code>YYYY-MM-DD = name</code></label>
+    <textarea id="exams" rows="4" placeholder="2027-05-03 = IB Exams begin&#10;2027-05-14 = GCSE Maths Paper 1"></textarea>
+    <p class="hint" style="margin-top:6px">
+      Shows the days left until the next one. Dates in the past are ignored automatically,
+      so old entries can stay in the list. Click the countdown on the bar to see the one after.
+      Leave empty to hide it.
+    </p>
+
+    <hr>
+
     <div class="row">
       <div>
         <label for="place">Weather location</label>
@@ -243,7 +273,8 @@
 
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
-              place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00" };
+              place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
+              exams:"" };
 
   function load(){
     try{
@@ -571,6 +602,7 @@
     document.getElementById("reps").value = cfg.reps;
     document.getElementById("file").value = cfg.file;
     document.getElementById("place").value = cfg.place;
+    document.getElementById("exams").value = cfg.exams;
     document.getElementById("showWx").checked = cfg.showWx;
     document.getElementById("showQuote").checked = cfg.showQuote;
     listEl.innerHTML = "";
@@ -586,6 +618,7 @@
     cfg.reps  = Math.min(5, Math.max(1, parseInt(document.getElementById("reps").value, 10) || 1));
     cfg.file  = document.getElementById("file").value.trim();
     cfg.place = document.getElementById("place").value.trim() || "Egham";
+    cfg.exams = document.getElementById("exams").value;
     cfg.showWx = document.getElementById("showWx").checked;
     cfg.showQuote = document.getElementById("showQuote").checked;
     cfg.times = Array.prototype.map.call(listEl.querySelectorAll("input"), function(i){ return i.value; })
@@ -647,6 +680,51 @@
         });
     }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
   }
+
+  /* ---------- exam countdown ---------- */
+  var examEl = document.getElementById("exam");
+  var examDaysEl = document.getElementById("examDays");
+  var examNameEl = examEl.querySelector("b");
+  var examWhenEl = document.getElementById("examWhen");
+  var examPick = 0;                       // which upcoming exam is on screen
+
+  // "2027-05-03 = IB Exams begin" -> {d:Date, name:"IB Exams begin"}
+  function parseExams(text){
+    return (text || "").split("\n").map(function(line){
+      var m = line.match(/^\s*(\d{4})-(\d{2})-(\d{2})\s*[=:|-]\s*(.+?)\s*$/);
+      if(!m) return null;
+      return {d:new Date(+m[1], +m[2] - 1, +m[3]), name:m[4]};
+    }).filter(Boolean).sort(function(a, b){ return a.d - b.d; });
+  }
+
+  function upcomingExams(){
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return parseExams(cfg.exams).filter(function(e){ return e.d >= today; });
+  }
+
+  function updateExam(){
+    var list = upcomingExams();
+    if(!list.length){ examEl.hidden = true; return; }
+    if(examPick >= list.length) examPick = 0;
+
+    var e = list[examPick];
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var days = Math.round((e.d - today) / 86400000);
+
+    examDaysEl.textContent = days === 0 ? "today" : days;
+    examNameEl.textContent = e.name;
+    examWhenEl.textContent = (days === 0 ? "" : days === 1 ? "day · " : "days · ") +
+      e.d.toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"});
+    examEl.classList.toggle("soon", days <= 14);
+    examEl.hidden = false;
+    examEl.title = list.length > 1 ? "Click for the next one (" + list.length + " coming up)"
+                                   : "Exam countdown";
+  }
+
+  examEl.onclick = function(){
+    var n = upcomingExams().length;
+    if(n > 1){ examPick = (examPick + 1) % n; updateExam(); }
+  };
 
   /* ---------- quote of the day ---------- */
   var quoteEl = document.getElementById("quote");
@@ -779,7 +857,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applySlides(); tick(); refreshWeather(); showQuote(); lastReload = Date.now();
+    save(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -808,6 +886,8 @@
   setInterval(dailyReload, 60 * 1000);           // fresh copy of the board overnight
 
   showQuote();
+  updateExam();
+  setInterval(updateExam, 60 * 1000);
   setInterval(showQuote, 60 * 1000);   // picks up the change at midnight
 })();
 </script>
