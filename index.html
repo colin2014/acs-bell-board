@@ -102,93 +102,126 @@
 
 
   /* ---------- signage layout (body.cards) ----------
-     Light, flat, full-bleed. Hierarchy from block size and one accent colour. */
+     Two columns split by a draggable bar; the bottom strip is a flex row so
+     hiding a panel lets the others expand into the space. */
   body.cards{
     --ink:#15202e; --paper:#f2efe9; --card:#ffffff; --line:#ddd7cc;
     --accent:#0f2d5c; --hot:#f2b418; --dim:#6b7480;
+    --rail:30%;
     display:grid; padding:0; gap:0; background:var(--paper); color:var(--ink);
-    grid-template-columns:repeat(12, 1fr);
-    grid-template-rows:minmax(58px, 8vh) 1fr minmax(84px, 12vh);
+    grid-template-columns:1fr var(--rail);
+    grid-template-rows:1fr auto;
   }
   body.cards #bar{display:contents}
-  body.cards #bar > *{
-    margin:0; border:0; border-radius:0; box-shadow:none; min-width:0;
-    background:transparent; padding:12px 20px;
-    display:flex; flex-direction:column; justify-content:center; gap:2px;
+  body.cards #stage{grid-column:1; grid-row:1; background:var(--card)}
+  body.cards #rail{
+    grid-column:2; grid-row:1; display:flex; flex-direction:column; min-width:0; overflow:hidden;
   }
+  body.cards #strip{
+    grid-column:1 / 3; grid-row:2; display:flex; align-items:stretch;
+    background:var(--accent); min-height:clamp(72px, 11vh, 132px);
+  }
+  body.cards #strip > *{
+    flex:1 1 0; min-width:0; margin:0; border:0; border-radius:0; box-shadow:none;
+    background:transparent; color:#fff; padding:10px 18px;
+    display:flex; flex-direction:column; justify-content:center; gap:2px;
+    border-right:1px solid rgba(255,255,255,.13);
+  }
+  body.cards #strip > *:last-child{border-right:0}
+  body.cards #quote{flex:2.4 1 0; text-align:left; -webkit-line-clamp:3;
+                    font-size:clamp(11px,1.7vh,15px); color:rgba(255,255,255,.8)}
+  body.cards #timeCard{align-items:flex-end; text-align:right}
+  body.cards #wx, body.cards #exam{flex-direction:row; align-items:center; gap:12px}
+  body.cards #next{white-space:nowrap; color:rgba(255,255,255,.7)}
 
-  /* the deck, 16:9 on white */
-  body.cards #stage{grid-column:1 / 9; grid-row:1 / 3; background:var(--card)}
-
-  /* rail header: what is happening right now */
+  /* rail: now + the day as blocks */
   body.cards #now{
-    grid-column:9 / 13; grid-row:1; background:var(--accent); color:#fff;
-    justify-content:center; text-align:left; padding:12px 22px;
+    background:var(--accent); color:#fff; padding:12px 22px; flex:0 0 auto;
+    display:flex; flex-direction:column; justify-content:center;
+    align-items:flex-start; text-align:left; margin:0;
   }
   body.cards #nowName{font-size:clamp(18px,3.2vh,32px); line-height:1.1; color:#fff}
   body.cards #nowSub {font-size:clamp(11px,1.6vh,15px); color:rgba(255,255,255,.72)}
-
-  /* rail: the day as a stack of blocks */
-  body.cards #agenda{
-    grid-column:9 / 13; grid-row:2; background:var(--paper);
-    justify-content:flex-start; gap:0; padding:0; overflow:hidden;
-  }
+  body.cards #agenda{flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:hidden}
   body.cards #agendaTitle{display:none}
-  body.cards #agendaList{flex:1 1 auto; display:flex; flex-direction:column; gap:0}
+  body.cards #agendaList{flex:1 1 auto; display:flex; flex-direction:column; min-height:0}
   body.cards .agendaRow{
     flex:1 1 0; display:flex; flex-direction:column; justify-content:center; gap:2px;
-    padding:8px 22px; background:var(--card); border-bottom:1px solid var(--line);
-    color:var(--ink); font-size:clamp(13px,2.1vh,20px); font-weight:600; opacity:1;
+    padding:6px 22px; background:var(--card); border-bottom:1px solid var(--line);
+    color:var(--ink); font-size:clamp(12px,2vh,19px); font-weight:600; opacity:1; min-height:0;
   }
   body.cards .agendaRow time{
-    order:2; font-size:clamp(10px,1.5vh,13px); font-weight:500; color:var(--dim);
-    letter-spacing:.04em; min-width:0;
+    order:2; font-size:clamp(10px,1.4vh,13px); font-weight:500; color:var(--dim); letter-spacing:.04em;
   }
-  body.cards .agendaRow.done{background:#eae5db; color:#9aa0a8; opacity:1}
+  body.cards .agendaRow.done{background:#eae5db; color:#9aa0a8}
   body.cards .agendaRow.done time{color:#a9aeb5}
   body.cards .agendaRow.live{background:var(--hot); color:#1b1405; font-weight:800}
   body.cards .agendaRow.live time{color:rgba(27,20,5,.7)}
 
-  /* bottom strip */
-  body.cards #wx, body.cards #week, body.cards #exam,
-  body.cards #quote, body.cards #next, body.cards #timeCard{
-    grid-row:3; background:var(--accent); color:#fff; border-right:1px solid rgba(255,255,255,.12);
-  }
-  body.cards #wx      {grid-column:1 / 3;  flex-direction:row; align-items:center; gap:12px}
-  body.cards #week    {grid-column:3 / 5;  border-left:0}
-  body.cards #exam    {grid-column:5 / 7;  flex-direction:row; align-items:center; gap:12px}
-  body.cards #quote   {grid-column:7 / 9; text-align:left; justify-content:center;
-                       font-size:clamp(11px,1.7vh,15px); -webkit-line-clamp:3; color:rgba(255,255,255,.8)}
-  body.cards #next    {grid-column:9 / 11; text-align:left; padding-left:20px; white-space:nowrap}
-  body.cards #timeCard{grid-column:11 / 13; align-items:flex-end; text-align:right; border-right:0}
-
-  body.cards #timeCard #clock{font-size:clamp(24px,4.6vh,46px); color:#fff}
-  body.cards #timeCard #date {font-size:clamp(10px,1.5vh,14px); color:rgba(255,255,255,.7); font-weight:500}
-  body.cards #wxIcon{font-size:clamp(22px,3.6vh,38px)}
-  body.cards #wxTemp{font-size:clamp(20px,3.4vh,36px); color:#fff}
+  body.cards #clock{font-size:clamp(22px,4.2vh,44px); color:#fff}
+  body.cards #date {font-size:clamp(10px,1.5vh,14px); color:rgba(255,255,255,.7); font-weight:500}
+  body.cards #wxIcon{font-size:clamp(20px,3.4vh,36px)}
+  body.cards #wxTemp{font-size:clamp(18px,3.2vh,34px); color:#fff}
   body.cards #wxSub {font-size:clamp(10px,1.4vh,13px); color:rgba(255,255,255,.7)}
-  body.cards #weekLetter{font-size:clamp(20px,3.4vh,36px); color:var(--hot)}
+  body.cards #weekLetter{font-size:clamp(18px,3.2vh,34px); color:var(--hot)}
   body.cards #weekSub{font-size:clamp(9px,1.3vh,12px); color:rgba(255,255,255,.6)}
-  body.cards #examDays{font-size:clamp(20px,3.4vh,36px); color:var(--hot)}
+  body.cards #examDays{font-size:clamp(18px,3.2vh,34px); color:var(--hot)}
   body.cards #examName{color:rgba(255,255,255,.7)}
   body.cards #examName b{color:#fff}
-  body.cards #next{color:rgba(255,255,255,.7)}
-  body.cards #next b{color:#fff; font-size:clamp(16px,2.8vh,28px)}
+  body.cards #next b{color:#fff; font-size:clamp(15px,2.6vh,26px)}
+  body.cards #tools button{background:rgba(255,255,255,.92); color:var(--ink); border-color:var(--line)}
 
-  /* controls sit on a light background here */
-  body.cards #tools button{background:rgba(255,255,255,.9); color:var(--ink); border-color:var(--line)}
+  /* the drag handle between deck and rail */
+  #splitter{display:none}
+  body.cards #splitter{
+    display:block; position:absolute; top:0; bottom:0; right:-4px; width:9px;
+    cursor:col-resize; z-index:6;
+  }
+  body.cards #splitter::after{
+    content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:3px; height:52px; border-radius:2px; background:var(--line); opacity:0; transition:opacity .2s;
+  }
+  body.cards #splitter:hover::after, body.dragging #splitter::after{opacity:1; background:var(--accent)}
+  body.dragging{cursor:col-resize; user-select:none}
+  body.dragging iframe{pointer-events:none}     /* keep the drag from being eaten by the deck */
+
+  /* per-panel controls */
+  .pctl{
+    position:absolute; top:4px; right:6px; display:flex; gap:3px; z-index:4;
+    opacity:0; transition:opacity .18s;
+  }
+  .panel:hover > .pctl{opacity:1}
+  .pctl button{
+    width:22px; height:22px; padding:0; font-size:13px; line-height:1; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.25);
+  }
+  .pctl button:hover{background:rgba(255,255,255,.3)}
+  body.cards #rail .pctl button, body.cards #agenda .pctl button{
+    background:rgba(0,0,0,.08); color:var(--ink); border-color:rgba(0,0,0,.16);
+  }
+  body.cards #now .pctl button{background:rgba(255,255,255,.16); color:#fff; border-color:rgba(255,255,255,.3)}
+  .panel{position:relative}
 
   /* narrow screens: stack rather than squash */
   @media (max-width:900px){
-    body.cards{grid-template-columns:repeat(2, 1fr); grid-template-rows:auto}
-    body.cards #stage{grid-column:1 / 3; grid-row:auto; min-height:40vh}
-    body.cards #now  {grid-column:1 / 3; grid-row:auto}
-    body.cards #agenda{grid-column:1 / 3; grid-row:auto; min-height:40vh}
-    body.cards #wx, body.cards #week, body.cards #exam,
-    body.cards #quote, body.cards #next, body.cards #timeCard{grid-column:1 / 3; grid-row:auto}
+    body.cards{grid-template-columns:1fr; grid-template-rows:auto auto auto}
+    body.cards #stage{grid-column:1; grid-row:1; min-height:38vh}
+    body.cards #rail{grid-column:1; grid-row:2; min-height:40vh}
+    body.cards #strip{grid-column:1; grid-row:3; flex-wrap:wrap}
+    body.cards #strip > *{flex:1 1 40%}
+    body.cards #splitter{display:none}
   }
 
   body:not(.cards) #agenda{display:none}
+  body:not(.cards) #rail, body:not(.cards) #strip{display:contents}
+  body:not(.cards) #timeCard{order:1}
+  body:not(.cards) #week{order:2}
+  body:not(.cards) #wx{order:3}
+  body:not(.cards) #exam{order:4}
+  body:not(.cards) #quote{order:5}
+  body:not(.cards) #now{order:6; margin-left:auto}
+  body:not(.cards) #next{order:7}
   #agendaTitle{
     font-size:12px; letter-spacing:.12em; text-transform:uppercase;
     color:var(--muted); margin-bottom:10px;
@@ -247,6 +280,7 @@
     <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
     <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
   </div>
+  <div id="splitter" title="Drag to resize"></div>
   <iframe id="slides" allow="autoplay; fullscreen" allowfullscreen></iframe>
   <div id="placeholder">
     <div style="font-size:22px">No slideshow set</div>
@@ -255,32 +289,36 @@
 </div>
 
 <div id="bar">
-  <div id="timeCard">
-    <div id="clock">--:--:--</div>
-    <div id="date"></div>
-  </div>
-  <div id="week" hidden>
-    <div id="weekLetter">&mdash;</div>
-    <div id="weekSub">Week</div>
-  </div>
-  <div id="wx" hidden>
-    <div id="wxIcon">&#9925;</div>
-    <div>
-      <div id="wxTemp">--&deg;</div>
-      <div id="wxSub">&mdash;</div>
+  <div id="rail">
+    <div id="now">
+      <div id="nowName">&mdash;</div>
+      <div id="nowSub"></div>
     </div>
+    <div id="agenda"><div id="agendaTitle">Today</div><div id="agendaList"></div></div>
   </div>
-  <div id="exam" hidden title="Click to see the next one">
-    <div id="examDays">--</div>
-    <div id="examName"><b>&mdash;</b><span id="examWhen"></span></div>
+  <div id="strip">
+    <div id="timeCard">
+      <div id="clock">--:--:--</div>
+      <div id="date"></div>
+    </div>
+    <div id="week" hidden>
+      <div id="weekLetter">&mdash;</div>
+      <div id="weekSub">Week</div>
+    </div>
+    <div id="wx" hidden>
+      <div id="wxIcon">&#9925;</div>
+      <div>
+        <div id="wxTemp">--&deg;</div>
+        <div id="wxSub">&mdash;</div>
+      </div>
+    </div>
+    <div id="exam" hidden title="Click to see the next one">
+      <div id="examDays">--</div>
+      <div id="examName"><b>&mdash;</b><span id="examWhen"></span></div>
+    </div>
+    <div id="quote" title="Quote of the day"><span id="quoteText"></span></div>
+    <div id="next">Next bell<b>&mdash;</b></div>
   </div>
-  <div id="quote" title="Quote of the day"></div>
-  <div id="now">
-    <div id="nowName">&mdash;</div>
-    <div id="nowSub"></div>
-  </div>
-  <div id="agenda"><div id="agendaTitle">Today</div><div id="agendaList"></div></div>
-  <div id="next">Next bell<b>&mdash;</b></div>
 </div>
 
 <div id="settings">
@@ -393,6 +431,9 @@
     <div id="timeList"></div>
     <button id="addTime" style="margin-top:10px">+ Add time</button>
 
+    <label>Hidden panels</label>
+    <div id="panelList"></div>
+
     <div class="actions">
       <button id="resetBtn">Reset times</button>
       <div class="spacer"></div>
@@ -407,7 +448,7 @@
   "use strict";
 
   var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
-  var KEY = "acsBell.v5";
+  var KEY = "acsBell.v6";
 
   var DEFAULT_EXAMS = "2027-04-23 = Exams begin";
 
@@ -416,7 +457,7 @@
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
-              exams:DEFAULT_EXAMS, layout:"cards" };
+              exams:DEFAULT_EXAMS, layout:"cards", panels:{}, rail:30 };
 
   function load(){
     try{
@@ -737,7 +778,7 @@
       nextEl.textContent = "none left today";
     }
 
-    if(!cfg.showWx) wxEl.hidden = true;    // stays off no matter what a late fetch does
+    if(!cfg.showWx || panelState("wx").h) wxEl.hidden = true;    // stays off no matter what a late fetch does
 
     // nudge: gear glows amber while sound is still locked
     setBtn.classList.toggle("warn", !armed() && !(cfg.tune === "file" && cfg.file));
@@ -761,7 +802,30 @@
     listEl.appendChild(row);
   }
 
+  function renderPanelList(){
+    var host = document.getElementById("panelList");
+    host.innerHTML = "";
+    var hidden = PANELS.filter(function(p){ return panelState(p.id).h; });
+    if(!hidden.length){
+      host.innerHTML = '<span class="hint" style="margin:0">Nothing hidden. Use the ✕ on a panel to hide it.</span>';
+      return;
+    }
+    hidden.forEach(function(p){
+      var b = document.createElement("button");
+      b.textContent = "+ " + p.name;
+      b.style.marginRight = "8px";
+      b.onclick = function(){
+        panelState(p.id).h = false;
+        var el = document.getElementById(p.id);
+        if(el && !selfHiding[p.id]) el.hidden = false;
+        save(); refreshWeather(); updateWeek(); updateExam(); renderPanelList();
+      };
+      host.appendChild(b);
+    });
+  }
+
   function openSettings(){
+    renderPanelList();
     document.getElementById("url").value = cfg.url;
     document.getElementById("layout").value = cfg.layout;
     document.getElementById("delay").value = cfg.delay;
@@ -828,7 +892,7 @@
   }
 
   function refreshWeather(){
-    if(!cfg.showWx){ wxEl.hidden = true; return; }
+    if(!cfg.showWx || panelState("wx").h){ wxEl.hidden = true; return; }
     var p = (coords && coordsFor === cfg.place)
           ? Promise.resolve(coords)
           : geocode(cfg.place || "Egham").then(function(c){ coords = c; coordsFor = cfg.place; return c; });
@@ -849,6 +913,87 @@
           wxEl.hidden = !cfg.showWx;
         });
     }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
+  }
+
+
+  /* ---------- per-panel controls: hide, and bigger / smaller ---------- */
+  var PANELS = [
+    {id:"timeCard", name:"Clock"},   {id:"week",  name:"Week A/B"},
+    {id:"wx",       name:"Weather"}, {id:"exam",  name:"Exam countdown"},
+    {id:"quote",    name:"Quote"},   {id:"next",  name:"Next bell"},
+    {id:"now",      name:"Current period"}, {id:"agenda", name:"Today's schedule"}
+  ];
+
+  function panelState(id){
+    if(!cfg.panels[id]) cfg.panels[id] = {h:false, s:1};
+    return cfg.panels[id];
+  }
+
+  // panels that hide themselves for their own reasons (no weather, no exams, holidays)
+  var selfHiding = {wx:1, exam:1, week:1};
+
+  function applyPanels(){
+    PANELS.forEach(function(p){
+      var el = document.getElementById(p.id);
+      if(!el) return;
+      var st = panelState(p.id);
+      el.classList.add("panel");
+      el.style.zoom = st.s === 1 ? "" : st.s;
+      if(st.h) el.hidden = true;
+      else if(!selfHiding[p.id]) el.hidden = false;   // the rest may re-show themselves
+    });
+    document.documentElement.style.setProperty("--rail", cfg.rail + "%");
+    document.body.style.setProperty("--rail", cfg.rail + "%");
+  }
+
+  function buildPanelControls(){
+    PANELS.forEach(function(p){
+      var el = document.getElementById(p.id);
+      if(!el || el.querySelector(":scope > .pctl")) return;
+      var box = document.createElement("div");
+      box.className = "pctl";
+      [["−","smaller",-0.1], ["+","bigger",0.1], ["✕","hide",0]].forEach(function(b){
+        var btn = document.createElement("button");
+        btn.textContent = b[0];
+        btn.title = b[1] + " — " + p.name;
+        btn.onclick = function(ev){
+          ev.stopPropagation();
+          var st = panelState(p.id);
+          if(b[2] === 0){ st.h = true; el.hidden = true; }
+          else { st.s = Math.min(2, Math.max(0.6, Math.round((st.s + b[2]) * 10) / 10));
+                 el.style.zoom = st.s === 1 ? "" : st.s; }
+          save();
+        };
+        box.appendChild(btn);
+      });
+      el.appendChild(box);
+    });
+  }
+
+  /* ---------- draggable split between deck and rail ---------- */
+  function initSplitter(){
+    var sp = document.getElementById("splitter");
+    if(!sp) return;
+    sp.addEventListener("pointerdown", function(e){
+      if(cfg.layout !== "cards") return;
+      e.preventDefault();
+      sp.setPointerCapture(e.pointerId);
+      document.body.classList.add("dragging");
+    });
+    sp.addEventListener("pointermove", function(e){
+      if(!document.body.classList.contains("dragging")) return;
+      var pct = 100 - (e.clientX / window.innerWidth) * 100;
+      cfg.rail = Math.min(60, Math.max(15, Math.round(pct)));
+      document.body.style.setProperty("--rail", cfg.rail + "%");
+    });
+    ["pointerup","pointercancel"].forEach(function(evt){
+      sp.addEventListener(evt, function(e){
+        if(!document.body.classList.contains("dragging")) return;
+        document.body.classList.remove("dragging");
+        sp.releasePointerCapture(e.pointerId);
+        save();
+      });
+    });
   }
 
   /* ---------- week A / B ----------
@@ -886,7 +1031,7 @@
     for(var i = 0; i < WEEKS.length; i++){
       if(iso >= WEEKS[i][0] && iso <= WEEKS[i][1]){ hit = WEEKS[i]; break; }
     }
-    if(!hit){ weekEl.hidden = true; return; }        // holidays: nothing to show
+    if(!hit || panelState("week").h){ weekEl.hidden = true; return; }
     weekLetterEl.textContent = "Week " + hit[2];
     weekSubEl.textContent = "timetable";
     weekEl.hidden = false;
@@ -915,7 +1060,7 @@
 
   function updateExam(){
     var list = upcomingExams();
-    if(!list.length){ examEl.hidden = true; return; }
+    if(!list.length || panelState("exam").h){ examEl.hidden = true; return; }
     if(examPick >= list.length) examPick = 0;
 
     var e = list[examPick];
@@ -939,6 +1084,7 @@
 
   /* ---------- quote of the day ---------- */
   var quoteEl = document.getElementById("quote");
+  var quoteTextEl = document.getElementById("quoteText");
   var QUOTES = [
     ["It always seems impossible until it's done.", "Nelson Mandela"],
     ["The best way to predict the future is to invent it.", "Alan Kay"],
@@ -991,15 +1137,15 @@
   var shownQuote = "";
 
   function showQuote(){
-    if(!cfg.showQuote){ quoteEl.style.display = "none"; quoteEl.textContent = ""; return; }
-    quoteEl.style.display = "";
+    if(!cfg.showQuote){ quoteEl.hidden = true; quoteTextEl.textContent = ""; return; }
+    if(!panelState("quote").h) quoteEl.hidden = false;
     var q = quoteForDay(new Date());
     var text = "“" + q[0] + "” — " + q[1];
     if(text === shownQuote) return;              // already on screen; leave it alone
     shownQuote = text;
     quoteEl.classList.add("fade");
     setTimeout(function(){
-      quoteEl.textContent = text;
+      quoteTextEl.textContent = text;
       quoteEl.classList.remove("fade");
     }, 400);
   }
@@ -1068,7 +1214,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applyLayout(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); updateWeek(); lastReload = Date.now();
+    save(); applyLayout(); applyPanels(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); updateWeek(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -1087,6 +1233,9 @@
 
   load();
   applyLayout();
+  applyPanels();
+  buildPanelControls();
+  initSplitter();
   applySlides();
   tick();
   setInterval(tick, 250);
