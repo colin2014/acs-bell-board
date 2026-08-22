@@ -63,7 +63,15 @@
   button:hover{border-color:var(--accent)}
   button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
 
-  /* gear icon button — the only chrome on the bar */
+  /* floating controls, top right over the slides */
+  #tools{
+    position:absolute; top:12px; right:12px; z-index:5;
+    display:flex; gap:8px; opacity:.25; transition:opacity .25s;
+  }
+  #tools:hover, #tools:focus-within{opacity:1}
+  #stage:hover #tools{opacity:.75}
+  #tools button{backdrop-filter:blur(4px); background:rgba(22,27,34,.85)}
+
   #setBtn{
     width:44px; height:44px; padding:0; border-radius:50%; font-size:20px; line-height:1;
     display:flex; align-items:center; justify-content:center; opacity:.55; transition:opacity .2s, transform .3s;
@@ -116,6 +124,10 @@
 <body>
 
 <div id="stage">
+  <div id="tools">
+    <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
+    <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
+  </div>
   <iframe id="slides" allow="autoplay; fullscreen" allowfullscreen></iframe>
   <div id="placeholder">
     <div style="font-size:22px">No slideshow set</div>
@@ -140,8 +152,6 @@
     <div id="examName"><b>&mdash;</b><span id="examWhen"></span></div>
   </div>
   <div id="quote" title="Quote of the day"></div>
-  <button id="fsBtn" title="Full screen (F)" aria-label="Full screen">&#9974;</button>
-  <button id="setBtn" title="Settings" aria-label="Settings">&#9881;</button>
   <div id="now">
     <div id="nowName">&mdash;</div>
     <div id="nowSub"></div>
@@ -574,6 +584,8 @@
       nextEl.textContent = "none left today";
     }
 
+    if(!cfg.showWx) wxEl.hidden = true;    // stays off no matter what a late fetch does
+
     // nudge: gear glows amber while sound is still locked
     setBtn.classList.toggle("warn", !armed() && !(cfg.tune === "file" && cfg.file));
   }
@@ -678,7 +690,8 @@
           wxSub.textContent = w[1] + " · " + c.name + " · " +
             Math.round(j.daily.temperature_2m_min[0]) + "–" +
             Math.round(j.daily.temperature_2m_max[0]) + "°";
-          wxEl.hidden = false;
+          // the setting may have been turned off while this request was in flight
+          wxEl.hidden = !cfg.showWx;
         });
     }).catch(function(){ wxEl.hidden = true; });   // offline or blocked: just hide it
   }
