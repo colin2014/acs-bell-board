@@ -267,14 +267,16 @@
   "use strict";
 
   var DEFAULT_TIMES = ["08:30","08:55","10:25","11:25","12:30","13:25","14:30"];
-  var KEY = "acsBell.v3";
+  var KEY = "acsBell.v4";
+
+  var DEFAULT_EXAMS = "2027-04-23 = Exams begin";
 
   var DEFAULT_SLIDES = "https://docs.google.com/presentation/d/1Pze7Q9tzSjgYy_mHaepvB7kka_LzTgw_7Klp52RkE2g/edit";
 
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
-              exams:"" };
+              exams:DEFAULT_EXAMS };
 
   function load(){
     try{
