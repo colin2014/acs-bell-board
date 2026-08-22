@@ -85,6 +85,90 @@
   }
   #fsBtn:hover{opacity:1}
 
+
+  /* ---------- signage layout (body.cards) ----------
+     Full-bleed panels, no gaps, no rounded corners, no shadows.
+     Hierarchy comes from panel size and type scale, the way wall displays do it. */
+  body.cards{
+    display:grid; padding:0; gap:0; background:#0b0f14;
+    grid-template-columns:repeat(12, 1fr);
+    grid-template-rows:minmax(84px, 13vh) minmax(72px, 12vh) 1fr minmax(66px, 10vh) minmax(52px, 8vh);
+  }
+  body.cards #bar{display:contents}          /* children become grid items */
+  body.cards #bar > *{
+    margin:0; border:0; border-radius:0; box-shadow:none; min-width:0;
+    background:var(--panel); border-right:1px solid #222a35; border-bottom:1px solid #222a35;
+    padding:14px 22px; display:flex; flex-direction:column; justify-content:center; gap:2px;
+  }
+
+  /* top ribbon: clock, weather, exam — each a different width */
+  body.cards #timeCard{grid-column:1 / 5;  grid-row:1; background:#11161d}
+  body.cards #wx      {grid-column:5 / 10;  grid-row:1; flex-direction:row; align-items:center; gap:18px}
+  body.cards #exam    {grid-column:10 / 13; grid-row:1; flex-direction:row; align-items:center; gap:18px;
+                       border-right:0}
+
+  body.cards #timeCard #clock{font-size:clamp(30px,6.4vh,68px); letter-spacing:0}
+  body.cards #timeCard #date {font-size:clamp(12px,1.9vh,18px); color:var(--muted); font-weight:500}
+  body.cards #wxIcon{font-size:clamp(28px,5.2vh,54px)}
+  body.cards #wxTemp{font-size:clamp(26px,5.2vh,54px)}
+  body.cards #wxSub {font-size:clamp(11px,1.7vh,15px)}
+  body.cards #examDays{font-size:clamp(26px,5.2vh,54px)}
+
+  /* the deck: the biggest thing on the wall */
+  body.cards #stage{grid-column:1 / 10; grid-row:2 / 5; border-right:1px solid #222a35}
+
+  /* right rail: what is happening now, then what is next */
+  body.cards #now{
+    grid-column:10 / 13; grid-row:2; background:#161d27; border-right:0;
+    justify-content:center; text-align:left; padding:14px 22px;
+  }
+  body.cards #nowName{font-size:clamp(26px,6.2vh,64px); line-height:1.05}
+  body.cards #nowSub {font-size:clamp(12px,2vh,19px); margin-top:6px}
+
+  body.cards #next{
+    grid-column:10 / 13; grid-row:4; text-align:left; padding:14px 22px; border-right:0;
+    flex-direction:column; justify-content:center;
+  }
+  body.cards #next b{font-size:clamp(20px,4vh,42px)}
+
+  /* quote: a thin band across the very bottom */
+  body.cards #quote{
+    grid-column:1 / 13; grid-row:5; background:#11161d; border-right:0; border-bottom:0;
+    text-align:center; justify-content:center; font-size:clamp(13px,2.1vh,20px);
+    -webkit-line-clamp:2;
+  }
+
+  /* narrow screens: stack rather than squash */
+  @media (max-width:900px){
+    body.cards{grid-template-columns:repeat(2, 1fr); grid-template-rows:auto}
+    body.cards #stage{grid-column:1 / 3; grid-row:auto; min-height:46vh}
+    body.cards #timeCard{grid-column:1 / 3; grid-row:auto}
+    body.cards #wx  {grid-column:1 / 2; grid-row:auto}
+    body.cards #exam{grid-column:2 / 3; grid-row:auto}
+    body.cards #now {grid-column:1 / 3; grid-row:auto}
+    body.cards #next{grid-column:1 / 3; grid-row:auto}
+    body.cards #quote{grid-column:1 / 3; grid-row:auto}
+  }
+
+  body:not(.cards) #agenda{display:none}
+  body.cards #agenda{
+    grid-column:10 / 13; grid-row:3; border-right:0; overflow:hidden;
+    justify-content:flex-start; gap:0; padding:14px 22px;
+  }
+  #agendaTitle{
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:10px;
+  }
+  #agendaList{display:flex; flex-direction:column; gap:0; min-height:0}
+  .agendaRow{
+    display:flex; gap:14px; align-items:baseline; padding:7px 0;
+    border-bottom:1px solid #1c232d; font-size:clamp(12px,1.9vh,18px); color:var(--muted);
+  }
+  .agendaRow time{font-variant-numeric:tabular-nums; min-width:5.2ch; color:#7d8896}
+  .agendaRow.done{opacity:.35}
+  .agendaRow.live{color:var(--fg); font-weight:700}
+  .agendaRow.live time{color:var(--ring)}
+
   body.ringing{animation:flash 1s steps(1,end) infinite}
   @keyframes flash{0%{background:var(--bg)}50%{background:#5a2d00}}
 
@@ -137,7 +221,7 @@
 </div>
 
 <div id="bar">
-  <div>
+  <div id="timeCard">
     <div id="clock">--:--:--</div>
     <div id="date"></div>
   </div>
@@ -157,6 +241,7 @@
     <div id="nowName">&mdash;</div>
     <div id="nowSub"></div>
   </div>
+  <div id="agenda"><div id="agendaTitle">Today</div><div id="agendaList"></div></div>
   <div id="next">Next bell<b>&mdash;</b></div>
 </div>
 
@@ -174,7 +259,13 @@
 
     <div class="row">
       <div>
-        <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
+        <label for="layout">Display layout</label>
+    <select id="layout">
+      <option value="full">Full display — slides fill the screen, one solid bar</option>
+      <option value="cards">Signage — full-bleed panels, slides plus a live info rail</option>
+    </select>
+
+    <label for="delay">Auto-advance slides every (seconds, 0 = off)</label>
         <input id="delay" type="number" min="0" step="1" value="0">
       </div>
       <div>
@@ -287,7 +378,7 @@
   var cfg = { url:DEFAULT_SLIDES, times:DEFAULT_TIMES.slice(), delay:0,
               tune:"westminster", reps:1, file:"",
               place:"Egham", showWx:true, showQuote:true, refresh:10, reloadAt:"03:00",
-              exams:DEFAULT_EXAMS };
+              exams:DEFAULT_EXAMS, layout:"full" };
 
   function load(){
     try{
@@ -307,6 +398,7 @@
     if(q.get("wx"))     cfg.showWx = q.get("wx") !== "0";
     if(q.get("quote"))  cfg.showQuote = q.get("quote") !== "0";
     if(q.get("refresh")) cfg.refresh = parseInt(q.get("refresh"), 10) || 0;
+    if(q.get("layout"))  cfg.layout = q.get("layout") === "cards" ? "cards" : "full";
   }
 
   function save(){
@@ -329,6 +421,10 @@
 
   var slidesEl = document.getElementById("slides");
   var placeholder = document.getElementById("placeholder");
+
+  function applyLayout(){
+    document.body.classList.toggle("cards", cfg.layout === "cards");
+  }
 
   function applySlides(){
     var e = embedUrl(cfg.url);
@@ -537,6 +633,23 @@
     {t:"17:45", name:"School day over"}
   ];
 
+  function renderAgenda(cur){
+    var host = document.getElementById("agendaList");
+    if(!host || document.body.className.indexOf("cards") === -1) return;
+    if(host.dataset.cur === cur.name) return;          // only redraw when it changes
+    host.dataset.cur = cur.name;
+    host.innerHTML = "";
+    // skip the bookend entries; show the teaching day
+    SCHEDULE.filter(function(e){ return e.t !== "00:00" && e.t !== "17:45"; })
+      .forEach(function(e){
+        var row = document.createElement("div");
+        row.className = "agendaRow" + (e.name === cur.name ? " live"
+                        : mins(e.t) < mins(cur.t) ? " done" : "");
+        row.innerHTML = "<time>" + e.t + "</time><span>" + e.name + "</span>";
+        host.appendChild(row);
+      });
+  }
+
   function mins(hhmm){ var p = hhmm.split(":"); return (+p[0])*60 + (+p[1]); }
 
   function updateNow(nowMin){
@@ -545,6 +658,7 @@
       if(mins(SCHEDULE[i].t) <= nowMin){ cur = SCHEDULE[i]; nxt = SCHEDULE[i+1] || null; }
     }
     nameEl.textContent = cur.name;
+    renderAgenda(cur);
     if(nxt){
       var left = mins(nxt.t) - nowMin;
       subEl.textContent = "until " + nxt.t + " · " + left + " min left";
@@ -611,6 +725,7 @@
 
   function openSettings(){
     document.getElementById("url").value = cfg.url;
+    document.getElementById("layout").value = cfg.layout;
     document.getElementById("delay").value = cfg.delay;
     document.getElementById("refresh").value = cfg.refresh;
     document.getElementById("tune").value = cfg.tune;
@@ -627,6 +742,7 @@
 
   function readForm(){
     cfg.url   = document.getElementById("url").value.trim();
+    cfg.layout = document.getElementById("layout").value;
     cfg.delay = Math.max(0, parseInt(document.getElementById("delay").value, 10) || 0);
     cfg.refresh = Math.max(0, parseInt(document.getElementById("refresh").value, 10) || 0);
     cfg.tune  = document.getElementById("tune").value;
@@ -873,7 +989,7 @@
   };
   document.getElementById("saveBtn").onclick = function(){
     readForm();
-    save(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); lastReload = Date.now();
+    save(); applyLayout(); applySlides(); tick(); refreshWeather(); showQuote(); updateExam(); lastReload = Date.now();
     dlg.classList.remove("open");
     arm();                                 // saving is a click, so audio can unlock here
   };
@@ -891,6 +1007,7 @@
   });
 
   load();
+  applyLayout();
   applySlides();
   tick();
   setInterval(tick, 250);
